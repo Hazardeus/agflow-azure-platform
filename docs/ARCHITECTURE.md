@@ -258,18 +258,29 @@ This separation reinforces both lifecycle and RBAC boundaries.
 The planned Azure network is:
 
 ```text
-vnet-agflow
-10.20.0.0/16
+vnet-agflow-lab                     10.20.0.0/16
 │
-├── snet-control
-│   10.20.1.0/24
+├── snet-control                    10.20.1.0/24
+│   ├── defaultOutboundAccess=false
+│   └── nsg-agflow-control-lab
 │
-├── snet-workspaces
-│   10.20.2.0/24
+├── snet-workspaces                 10.20.2.0/24
+│   ├── defaultOutboundAccess=false
+│   └── nsg-agflow-workspaces-lab
 │
-└── snet-private-endpoints
-    10.20.3.0/24
+└── snet-private-endpoints          10.20.3.0/24
+    ├── defaultOutboundAccess=false
+    ├── privateEndpointNetworkPolicies=Enabled
+    └── no NSG initially
 ```
+
+Milestone 2 does not provision outbound Internet connectivity.
+
+The platform must not rely on implicit Azure outbound access.
+The outbound mechanism will be selected when the first workload requiring
+public Internet access is introduced, with lab cost efficiency considered explicitly.
+
+See [ADR-0003](adr/0003-shared-network-foundation.md).
 
 ### `snet-control`
 

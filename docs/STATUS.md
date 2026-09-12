@@ -146,7 +146,7 @@ Validation completed:
 
 ### Milestone 2 — Networking
 
-Status: **Not started**
+Status: **In progress**
 
 ---
 
@@ -332,6 +332,7 @@ Current accepted decisions:
 
 * [ADR-0001 — Infrastructure ownership boundaries](adr/0001-iac-ownership-boundaries.md)
 * [ADR-0002 — Environment-aware Azure resource naming](adr/0002-environment-resource-naming.md)
+* [ADR-0003 — Shared network foundation and outbound connectivity](adr/0003-shared-network-foundation.md)
 
 Future major architectural decisions should be captured as ADRs when they affect areas such as:
 
@@ -374,7 +375,16 @@ A successful compile is not sufficient authorization to deploy.
 
 ## Current next action
 
-Scope and propose the implementation plan for **Milestone 2 — Networking**.
+Implement and validate the approved Milestone 2 network foundation.
 
-No networking resources should be introduced until that plan has been
-reviewed and explicitly approved.
+Approved scope:
+
+* `vnet-agflow-lab`
+* `snet-control`
+* `snet-workspaces`
+* `snet-private-endpoints`
+* `nsg-agflow-control-lab`
+* `nsg-agflow-workspaces-lab`
+
+No compute, identity, storage, Foundry, NAT Gateway, Public IP,
+Private Endpoint, Private DNS or DevPod workspace resources are in scope.

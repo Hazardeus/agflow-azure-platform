@@ -227,7 +227,7 @@ Portal Doc  RAG
 Two primary Resource Groups are planned.
 
 ```text
-rg-agflow-platform
+rg-agflow-platform-{environment}
 ```
 
 contains durable platform infrastructure such as:
@@ -240,7 +240,7 @@ contains durable platform infrastructure such as:
 * future Private Endpoints and DNS resources.
 
 ```text
-rg-agflow-workspaces
+rg-agflow-workspaces-{environment}
 ```
 
 contains ephemeral workspace infrastructure managed by DevPod/OpenTofu:
@@ -589,7 +589,7 @@ Workspace provisioner
 
 It should not receive broad Contributor rights over:
 
-* `rg-agflow-platform`;
+* `rg-agflow-platform-{environment}`;
 * Foundry;
 * control-plane VM;
 * platform secrets;

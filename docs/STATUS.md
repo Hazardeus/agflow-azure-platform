@@ -116,7 +116,8 @@ Current characteristics:
 * `lab`, `dev`, and `prod` are valid environment names;
 * environment-specific values are stored in `.bicepparam`;
 * no secrets are stored in Bicep source or parameter files;
-* no Azure resources are declared yet.
+* `infra/modules/resource-groups.bicep` declares the two platform Resource
+  Groups (Milestone 1, not yet deployed — see below).
 
 The current Bicep skeleton has been successfully validated with the Bicep compiler and analyzer.
 
@@ -151,11 +152,13 @@ Before this milestone is considered complete:
 
 ### Milestone 1 — Azure Resource Groups
 
+Status: **In progress**
+
 The first infrastructure implementation will create only:
 
 ```text
-rg-agflow-platform
-rg-agflow-workspaces
+rg-agflow-platform-{environment}
+rg-agflow-workspaces-{environment}
 ```
 
 The change must:
@@ -170,6 +173,20 @@ The change must:
 
 No actual Azure deployment should occur until the `what-if` output has been reviewed.
 
+Implemented so far:
+
+* `infra/modules/resource-groups.bicep` defines both Resource Groups with
+  environment-aware names per ADR-0002 and the common/purpose tags;
+* `infra/main.bicep` invokes the module and exposes the Resource Group
+  names/IDs as outputs;
+* `az bicep lint`, `az bicep build`, and `az bicep build-params` (lab) all
+  pass with no errors or warnings.
+
+Remaining before this milestone is complete:
+
+* review the subscription-level `what-if` output;
+* explicit approval and deployment.
+
 ---
 
 ## Planned milestones
@@ -180,8 +197,8 @@ The current intended implementation order is:
 
 Create:
 
-* `rg-agflow-platform`
-* `rg-agflow-workspaces`
+* `rg-agflow-platform-{environment}`
+* `rg-agflow-workspaces-{environment}`
 
 ### Milestone 2 — Networking
 
@@ -401,8 +418,8 @@ Complete and commit the repository baseline.
 After that, begin **Milestone 1 — Resource Groups** and implement only:
 
 ```text
-rg-agflow-platform
-rg-agflow-workspaces
+rg-agflow-platform-{environment}
+rg-agflow-workspaces-{environment}
 ```
 
 No networking, identities, VM, storage, Foundry, or DevPod resources should be introduced during that milestone.

@@ -23,11 +23,11 @@ For the development workflow, see [`DEVELOPMENT.md`](DEVELOPMENT.md).
 
 **Milestone 2 — Networking**
 
-Status: **Implemented, what-if reviewed, pending deployment**
+Status: **Completed**
 
-Milestone 1 (Resource Groups) is complete and deployed. Milestone 2 (shared
-network foundation) is implemented and has passed subscription-level
-`what-if` review; deployment has not been run yet.
+Milestone 1 (Resource Groups) and Milestone 2 (shared network foundation) are
+both implemented, deployed to LAB, and post-deployment verified. Milestone 3
+(Managed Identities and RBAC) has not started yet.
 
 ---
 
@@ -139,25 +139,18 @@ Validation completed:
 * Azure deployment
 * post-deployment verification
 
----
-
-## Current milestone
-
 ### Milestone 2 — Networking
 
-Status: **Implemented, what-if reviewed, pending deployment**
+Status: **Completed**
 
-`infra/modules/networking.bicep` declares the shared LAB network foundation:
+Implemented and deployed:
 
-* `vnet-agflow-lab` (`10.20.0.0/16`);
-* `snet-control` (`10.20.1.0/24`), `snet-workspaces` (`10.20.2.0/24`),
-  `snet-private-endpoints` (`10.20.3.0/24`);
-* `nsg-agflow-control-lab`, `nsg-agflow-workspaces-lab`, associated with
-  `snet-control` and `snet-workspaces` respectively.
-
-All subnets use `defaultOutboundAccess: false`; no NAT Gateway, Public IP, or
-other outbound connectivity resource is created (see ADR-0003). No custom NSG
-security rules were added.
+* `vnet-agflow-lab`
+* `snet-control`
+* `snet-workspaces`
+* `snet-private-endpoints`
+* `nsg-agflow-control-lab`
+* `nsg-agflow-workspaces-lab`
 
 Validation completed:
 
@@ -165,8 +158,17 @@ Validation completed:
 * Bicep build
 * Bicep parameter build
 * subscription-level Azure `what-if`
+* Azure deployment
+* post-deployment network verification
 
-Deployment has not been run yet.
+Outbound connectivity remains intentionally deferred according to ADR-0003.
+
+---
+
+## Current milestone
+
+None in progress. Milestone 3 (Managed Identities and RBAC) has not started
+yet — see [Planned milestones](#planned-milestones) below.
 
 ---
 

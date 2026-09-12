@@ -889,13 +889,23 @@ infra/main.bicep
 │
 ├── modules/identities.bicep
 │
-└── RBAC modules
-    ├── workspace resource-group assignment
-    └── workspace subnet custom-role assignment
+├── RBAC modules
+│   ├── workspace resource-group assignment
+│   └── workspace subnet custom-role assignment
+│
+└── modules/storage.bicep
 ```
 
 Cross-scope Azure resources are separated when required by Bicep or Azure
 deployment-scope semantics.
+
+`modules/storage.bicep` (Milestone 4, [ADR-0005](adr/0005-shared-storage-foundation.md))
+creates one foundational, deterministically-named `StorageV2` Storage
+Account in `rg-agflow-platform-{environment}`, with an environment-specific
+SKU and Blob soft-delete retention, HTTPS/TLS-only access, no anonymous
+Blob access, no Shared Key authorization, and no workload RBAC or
+data-plane resources (containers, shares, queues, tables) until a
+concrete consumer exists.
 
 The architecture favors:
 

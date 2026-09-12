@@ -189,6 +189,12 @@ properties: {
   minimumTlsVersion: 'TLS1_2'
   allowBlobPublicAccess: false
   allowSharedKeyAccess: false
+  defaultToOAuthAuthentication: true
+  allowCrossTenantReplication: false
+  networkAcls: {
+    defaultAction: 'Allow'
+    bypass: 'None'
+  }
 }
 ```
 
@@ -210,9 +216,24 @@ There is no current workload that requires account-key authentication, so enabli
 
 If a future concrete consumer cannot use Entra ID authentication, that milestone must explicitly justify any exception before Shared Key access is enabled.
 
+Consistent with this, `defaultToOAuthAuthentication = true` is also set explicitly, so Entra ID/OAuth is the account's declared default authentication behavior rather than an inherited client or portal default.
+
+### Cross-tenant replication
+
+`allowCrossTenantReplication` is explicitly set to `false`. There is no cross-tenant object-replication requirement in Milestone 4 or any planned milestone, so this closes off a data-exfiltration path pre-emptively rather than relying on whatever the platform default happens to be. This is additional hardening beyond the original ADR baseline, applied for the same "no implicit defaults" reason as the other account-level security properties.
+
 ### Network ACLs
 
 Milestone 4 does not invent IP allowlists, service-endpoint rules, or subnet-based network ACLs for consumers that do not yet exist.
+
+The account uses an explicit, minimal network rule set rather than relying on implicit Azure defaults:
+
+```text
+defaultAction = Allow
+bypass        = None
+```
+
+`bypass` is deliberately `None` rather than `AzureServices`: with `defaultAction = Allow` a bypass rule has no effect today, but leaving it unset (or set to `AzureServices`) would silently become a trusted-services exception if `defaultAction` is later tightened to `Deny` without this rule being revisited. The narrower value must be an explicit, reviewed decision at that time, not an inherited default.
 
 The account remains reachable through its authenticated public Azure endpoint until the private-connectivity design is implemented.
 

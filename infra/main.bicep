@@ -23,6 +23,20 @@ param workspacesSubnetPrefix string
 @description('snet-private-endpoints address prefix (CIDR). Environment-specific, no default.')
 param privateEndpointsSubnetPrefix string
 
+@description('Shared storage account SKU (redundancy). Environment-specific, no default.')
+@allowed([
+  'Standard_LRS'
+  'Standard_ZRS'
+  'Standard_GRS'
+  'Standard_RAGRS'
+  'Standard_GZRS'
+  'Standard_RAGZRS'
+])
+param storageSkuName string
+
+@description('Blob soft-delete retention in days for shared storage. Environment-specific, no default.')
+param blobSoftDeleteRetentionDays int
+
 var solutionName = 'agflow'
 
 // Mirrors the naming formula in modules/resource-groups.bicep (ADR-0002).
@@ -96,6 +110,22 @@ module rbacWorkspaceSubnet 'modules/rbac-workspace-subnet.bicep' = {
   ]
 }
 
+// ADR-0005: foundational shared Storage Account, no workload RBAC or data-plane children yet.
+module storage 'modules/storage.bicep' = {
+  name: 'storage-${environmentName}'
+  scope: resourceGroup(platformResourceGroupName)
+  params: {
+    location: location
+    environmentName: environmentName
+    solutionName: solutionName
+    storageSkuName: storageSkuName
+    blobSoftDeleteRetentionDays: blobSoftDeleteRetentionDays
+  }
+  dependsOn: [
+    resourceGroups
+  ]
+}
+
 output deploymentLocation string = location
 output environment string = environmentName
 output solution string = solutionName
@@ -109,3 +139,5 @@ output controlPlaneIdentityId string = identities.outputs.controlPlaneIdentityId
 output controlPlaneIdentityClientId string = identities.outputs.controlPlaneIdentityClientId
 output workspaceProvisionerIdentityId string = identities.outputs.workspaceProvisionerIdentityId
 output workspaceProvisionerIdentityClientId string = identities.outputs.workspaceProvisionerIdentityClientId
+output storageAccountId string = storage.outputs.storageAccountId
+output storageAccountName string = storage.outputs.storageAccountName

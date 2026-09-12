@@ -23,7 +23,7 @@ For the development workflow, see [`DEVELOPMENT.md`](DEVELOPMENT.md).
 
 **Milestone 4 — Shared Storage**
 
-Status: **Not started**
+Status: **Implemented, pending what-if review and deployment approval**
 
 Milestones 1 (Resource Groups), 2 (shared network foundation), and 3
 (Managed Identities and RBAC) are all implemented, deployed to LAB, and
@@ -204,12 +204,44 @@ Post-deployment verification confirmed against live Azure state:
   operations (the recurring UAMI `isolationScope` diff is known `what-if`
   noise and not an actual drift).
 
+### Milestone 4 — Shared Storage
+
+Status: **Implemented, pending what-if review and deployment approval**
+
+Implemented per [ADR-0005](adr/0005-shared-storage-foundation.md):
+
+* one foundational `Microsoft.Storage/storageAccounts` (StorageV2, Hot
+  access tier) in `rg-agflow-platform-lab`, named deterministically from
+  the solution name, environment name, and a subscription-derived unique
+  suffix;
+* LAB SKU `Standard_LRS`, parameterized per environment;
+* security baseline: HTTPS-only, TLS 1.2 minimum, public network access
+  enabled (transport only), anonymous Blob access disabled, Shared Key
+  authorization disabled;
+* Blob versioning and Blob soft delete (7-day retention for LAB, also
+  parameterized) as a baseline data-protection layer;
+* no containers, file shares, queues, tables, lifecycle policy, RBAC
+  assignments, or Private Endpoints — all deferred to the milestone that
+  introduces a concrete consumer.
+
+New module: `infra/modules/storage.bicep`.
+
+Validation completed:
+
+* Bicep lint
+* Bicep build
+* Bicep parameter build
+
+Still pending: subscription-level Azure `what-if` review, explicit
+deployment approval, deployment, and post-deployment verification.
+
 ---
 
 ## Current milestone
 
-**Milestone 4 — Shared Storage** has not started. See
-[Planned milestones](#planned-milestones) below for details.
+**Milestone 4 — Shared Storage** is implemented and locally validated, but
+not yet deployed. See [Planned milestones](#planned-milestones) below for
+details.
 
 ---
 
@@ -314,7 +346,6 @@ OpenTofu must consume existing shared infrastructure rather than recreate it.
 
 The following components have intentionally not been implemented yet:
 
-* Azure storage;
 * control-plane VM;
 * Microsoft Foundry resources;
 * Private Endpoints;

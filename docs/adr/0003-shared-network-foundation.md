@@ -251,7 +251,9 @@ The networking module is deployed into:
 
 `rg-agflow-platform-{environment}`
 
-using the Resource Group output produced by the existing Resource Group module.
+using the resource group name computed deterministically in `main.bicep`
+(see ADR-0002), with an explicit `dependsOn` on the Resource Group module to
+satisfy Bicep's cross-resource-group validation (BCP120).
 
 Conceptually:
 
@@ -317,7 +319,7 @@ Example:
 solution     = agflow
 environment  = lab
 managedBy    = bicep
-purpose      = network
+purpose      = networking
 ```
 
 Resource-specific `purpose` values may be used where useful, while avoiding an unnecessarily complex tagging model.

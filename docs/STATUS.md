@@ -21,14 +21,13 @@ For the development workflow, see [`DEVELOPMENT.md`](DEVELOPMENT.md).
 
 ## Current phase
 
-**Phase 0 — Repository and Bicep foundation**
+**Milestone 2 — Networking**
 
-Status: **In progress**
+Status: **Implemented, what-if reviewed, pending deployment**
 
-The repository structure, development governance, multi-agent instructions, architectural boundaries, and minimal Bicep foundation are being established before the first Azure resource is created.
-
-The two platform Resource Groups have been deployed (Milestone 1). No other
-Azure infrastructure has been deployed by this repository yet.
+Milestone 1 (Resource Groups) is complete and deployed. Milestone 2 (shared
+network foundation) is implemented and has passed subscription-level
+`what-if` review; deployment has not been run yet.
 
 ---
 
@@ -146,7 +145,7 @@ Validation completed:
 
 ### Milestone 2 — Networking
 
-Status: **Implemented, pending `what-if` review and deployment approval**
+Status: **Implemented, what-if reviewed, pending deployment**
 
 `infra/modules/networking.bicep` declares the shared LAB network foundation:
 
@@ -165,8 +164,9 @@ Validation completed:
 * Bicep lint
 * Bicep build
 * Bicep parameter build
+* subscription-level Azure `what-if`
 
-Azure `what-if` and deployment have not been run yet.
+Deployment has not been run yet.
 
 ---
 

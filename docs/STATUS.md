@@ -23,7 +23,7 @@ For the development workflow, see [`DEVELOPMENT.md`](DEVELOPMENT.md).
 
 **Milestone 5 — Control-plane VM**
 
-Status: **Not started**
+Status: **Implemented, pending what-if review and deployment approval**
 
 Milestones 1 (Resource Groups), 2 (shared network foundation), 3
 (Managed Identities and RBAC), and 4 (Shared Storage) are all implemented,
@@ -248,8 +248,58 @@ and `blobServices/default` reported no change.
 
 ## Current milestone
 
-**Milestone 5 — Control-plane VM** has not started. See
-[Planned milestones](#planned-milestones) below for details.
+### Milestone 5 — Control-plane VM
+
+Status: **Implemented, pending what-if review and deployment approval**
+
+Implemented per [ADR-0006](adr/0006-control-plane-compute-persistence-lab-egress.md):
+
+* `pip-agflow-control-lab` — Standard SKU, static IPv4, explicit LAB outbound
+  path only (no ingress/application intent);
+* `nic-agflow-control-lab` — single IP configuration in `snet-control`,
+  dynamic private IP, associated with the Public IP above;
+* an explicit `Deny-Internet-Inbound` rule (priority 100) added to the
+  existing `nsg-agflow-control-lab`, so the platform does not rely on
+  Azure's default deny-inbound behavior;
+* `disk-agflow-control-data-lab` — an independent `Microsoft.Compute/disks`
+  resource (`StandardSSD_LRS`, 128 GiB for LAB), attached to the VM with
+  `createOption: Attach` at fixed LUN 0 and `deleteOption: Detach`, so it
+  survives VM deletion/recreation and Spot deallocation;
+* `vm-agflow-control-lab` — Ubuntu 24.04 LTS Gen2
+  (`Canonical:ubuntu-24_04-lts:server:latest`), `Standard_D2as_v5`, Spot
+  priority with `Deallocate` eviction (LAB only), Trusted Launch with Secure
+  Boot and vTPM enabled, password authentication disabled (SSH public key
+  only), `AutomaticByPlatform` guest patching, Azure-managed boot
+  diagnostics (no M4 Storage Account dependency);
+  * per [ADR-0007](adr/0007-lab-control-plane-vm-sizing-adjustment.md),
+    `Standard_D2as_v5` (2 vCPU) replaces the originally-targeted
+    `Standard_D4as_v5` (4 vCPU) for LAB only, because the subscription's
+    Sweden Central `LowPriorityCores` Spot quota (3) cannot fit a 4-vCPU
+    Spot VM. This is a current cost/quota-compatible LAB size, not a
+    production sizing recommendation; `Standard_D4as_v5` remains a future
+    LAB scale-up option once quota or workload demand justify it;
+* both existing UAMIs (`id-agflow-control-plane-lab`,
+  `id-agflow-workspace-provisioner-lab`) attached to the VM; no new RBAC
+  introduced;
+* a minimal cloud-init bootstrap (`infra/bootstrap/control-plane-cloud-init.yaml`)
+  that idempotently formats/mounts the persistent data disk at `/srv/agflow`
+  and installs Docker Engine/Compose v2 from Ubuntu's distribution-signed
+  packages — no application containers, compose files, or secrets.
+
+New module: `infra/modules/control-plane-compute.bicep`. Modified:
+`infra/modules/networking.bicep` (NSG rule only; the module remains the sole
+owner of `nsg-agflow-control-lab`).
+
+Validation completed:
+
+* Bicep lint
+* Bicep build
+* Bicep parameter build (`AGFLOW_ADMIN_SSH_PUBLIC_KEY` must be set in the
+  operator's environment — the SSH public key is not committed to Git)
+
+Not yet done: subscription-level Azure `what-if`, deployment, post-deployment
+verification, idempotence `what-if`. Milestone 5 is not yet marked
+Completed.
 
 ---
 

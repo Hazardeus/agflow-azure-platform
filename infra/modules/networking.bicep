@@ -65,6 +65,7 @@ resource controlSubnet 'Microsoft.Network/virtualNetworks/subnets@2025-09-01' = 
   properties: {
     addressPrefix: controlSubnetPrefix
     defaultOutboundAccess: false
+    privateEndpointNetworkPolicies: 'Enabled'
     networkSecurityGroup: {
       id: controlNsg.id
     }
@@ -77,6 +78,7 @@ resource workspacesSubnet 'Microsoft.Network/virtualNetworks/subnets@2025-09-01'
   properties: {
     addressPrefix: workspacesSubnetPrefix
     defaultOutboundAccess: false
+    privateEndpointNetworkPolicies: 'Enabled'
     networkSecurityGroup: {
       id: workspacesNsg.id
     }

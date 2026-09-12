@@ -26,20 +26,31 @@ write_files:
       log "device inspection: $(lsblk -no NAME,TYPE,FSTYPE,MOUNTPOINT "${DEVICE}" 2>/dev/null | tr '\n' ';')"
 
       # Two independent, read-only, low-level probes that bypass any cache and never mutate the disk.
-      # A blkid failure alone is not proof of an empty disk, so both must agree before anything is formatted.
       DETECTED_TYPE="$(blkid -p -o value -s TYPE "${DEVICE}" 2>/dev/null || true)"
       SIGNATURE_COUNT="$(wipefs -n "${DEVICE}" 2>/dev/null | grep -c . || true)"
 
-      if [ -z "${DETECTED_TYPE}" ] && [ "${SIGNATURE_COUNT}" -eq 0 ]; then
-        # Both probes agree: no filesystem, partition table, or other signature of any kind.
-        log "no signature detected on ${DEVICE}; formatting as ${EXPECTED_FSTYPE}"
-        mkfs.ext4 -L agflow-data "${DEVICE}"
-      elif [ "${DETECTED_TYPE}" = "${EXPECTED_FSTYPE}" ] && [ "${SIGNATURE_COUNT}" -eq 1 ]; then
+      if [ "${DETECTED_TYPE}" = "${EXPECTED_FSTYPE}" ] && [ "${SIGNATURE_COUNT}" -eq 1 ]; then
+        # Confirmed, unambiguous existing ext4 filesystem — reuse it, never format.
         log "existing ${EXPECTED_FSTYPE} filesystem confirmed on ${DEVICE}; will not format"
-      else
-        # Anything else (unrecognized/foreign filesystem, partition table, RAID/LVM metadata, or more
-        # than one signature) fails closed instead of risking data that may not be ours.
+      elif [ -n "${DETECTED_TYPE}" ] || [ "${SIGNATURE_COUNT}" -gt 0 ]; then
+        # Any other filesystem, partition table, RAID/LVM metadata, or an inconsistency between the
+        # two probes (e.g. ext4 reported but signature count != 1) fails closed. No format runs here.
         fail "device ${DEVICE} has an unrecognized or ambiguous signature (blkid type='${DETECTED_TYPE:-none}', wipefs signature count=${SIGNATURE_COUNT}); refusing to format"
+      else
+        # No recognizable signature — on its own this does NOT prove the device is blank, only that
+        # no known metadata was found. Positively verify the entire device is zero-filled before
+        # treating it as a newly-created Azure managed disk. This is a full read, not a sample.
+        log "no filesystem signature detected on ${DEVICE}; verifying the full device is zero-filled before formatting"
+
+        DEVICE_SIZE="$(blockdev --getsize64 "${DEVICE}" 2>/dev/null || true)"
+        [ -n "${DEVICE_SIZE}" ] && [ "${DEVICE_SIZE}" -gt 0 ] || fail "could not determine size of ${DEVICE}; refusing to format"
+
+        if cmp --silent --bytes="${DEVICE_SIZE}" "${DEVICE}" /dev/zero; then
+          log "full-device zero check passed (${DEVICE_SIZE} bytes); formatting ${DEVICE} as ${EXPECTED_FSTYPE}"
+          mkfs.ext4 -L agflow-data "${DEVICE}"
+        else
+          fail "device ${DEVICE} has no recognizable filesystem signature but is not entirely zero-filled; refusing to format an ambiguous disk"
+        fi
       fi
 
       DISK_UUID="$(blkid -p -o value -s UUID "${DEVICE}")"
@@ -47,17 +58,15 @@ write_files:
 
       mkdir -p "${MOUNT_POINT}"
 
-      # Drop any existing fstab entry for this mount point that points at a different UUID, so a
-      # stale/conflicting entry can never silently coexist with the correct one.
+      # Rebuild fstab so exactly one canonical entry for this mount point exists after every run:
+      # drop every existing /srv/agflow line and every stale duplicate for this UUID, then append one line.
       if [ -f /etc/fstab ]; then
         awk -v mp="${MOUNT_POINT}" -v uuid="UUID=${DISK_UUID}" \
-          '($2 != mp) || ($1 == uuid) { print }' /etc/fstab > /etc/fstab.agflow.tmp
+          '($2 == mp) { next } ($1 == uuid) { next } { print }' /etc/fstab > /etc/fstab.agflow.tmp
         mv /etc/fstab.agflow.tmp /etc/fstab
       fi
 
-      if ! grep -qF "UUID=${DISK_UUID} " /etc/fstab; then
-        printf 'UUID=%s %s %s defaults,nofail 0 2\n' "${DISK_UUID}" "${MOUNT_POINT}" "${EXPECTED_FSTYPE}" >> /etc/fstab
-      fi
+      printf 'UUID=%s %s %s defaults,nofail 0 2\n' "${DISK_UUID}" "${MOUNT_POINT}" "${EXPECTED_FSTYPE}" >> /etc/fstab
 
       mount -a
 

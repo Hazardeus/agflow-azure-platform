@@ -54,6 +54,9 @@ resource vnet 'Microsoft.Network/virtualNetworks@2025-09-01' = {
         vnetAddressPrefix
       ]
     }
+    // Explicit to match deployed LAB state; avoids relying on the Azure API default
+    // and prevents what-if from flagging an unrelated modification during M3.
+    privateEndpointVNetPolicies: 'Disabled'
   }
 }
 

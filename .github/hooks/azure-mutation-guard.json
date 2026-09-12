@@ -1,0 +1,12 @@
+{
+  "hooks": {
+    "PreToolUse": [
+      {
+        "type": "command",
+        "command": "pwsh -NoProfile -ExecutionPolicy Bypass -File ./.github/hooks/scripts/check-azure-mutation.ps1",
+        "windows": "powershell -NoProfile -ExecutionPolicy Bypass -File .github\\hooks\\scripts\\check-azure-mutation.ps1",
+        "timeout": 10
+      }
+    ]
+  }
+}

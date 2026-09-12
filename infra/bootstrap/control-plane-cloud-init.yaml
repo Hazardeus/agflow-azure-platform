@@ -77,10 +77,49 @@ write_files:
       #!/usr/bin/env bash
       set -euo pipefail
 
+      export DEBIAN_FRONTEND=noninteractive
+
+      APT_MAX_ATTEMPTS=30
+      APT_RETRY_DELAY=10
+
+      log() { echo "agflow-bootstrap: $*"; }
+      fail() { echo "agflow-bootstrap: ERROR: $*" >&2; exit 1; }
+
+      # Retries a command up to APT_MAX_ATTEMPTS times, waiting APT_RETRY_DELAY seconds between
+      # attempts. Never deletes apt/dpkg lock files and never kills package-management processes —
+      # transient first-boot lock contention (e.g. Ubuntu's own unattended package activity) is
+      # waited out, not forced.
+      retry_apt() {
+        local description="$1"
+        shift
+        local attempt=1
+        while true; do
+          log "attempt ${attempt}/${APT_MAX_ATTEMPTS}: ${description}"
+          if "$@"; then
+            return 0
+          fi
+          if [ "${attempt}" -ge "${APT_MAX_ATTEMPTS}" ]; then
+            fail "${description} did not succeed after ${APT_MAX_ATTEMPTS} attempts"
+          fi
+          attempt=$((attempt + 1))
+          sleep "${APT_RETRY_DELAY}"
+        done
+      }
+
       # Ubuntu 24.04 distribution-signed packages — no upstream Docker apt repository, no curl-pipe-shell.
-      apt-get update
-      DEBIAN_FRONTEND=noninteractive apt-get install -y docker.io docker-compose-v2 uidmap
+      retry_apt "apt-get update" apt-get update
+
+      retry_apt "apt-get install docker.io docker-compose-v2 uidmap" \
+        apt-get install -y -o DPkg::Lock::Timeout=300 docker.io docker-compose-v2 uidmap
+
       systemctl enable --now docker
+
+      # A failed verification fails the bootstrap rather than silently leaving a half-installed runtime.
+      docker --version || fail "docker --version check failed"
+      docker compose version || fail "docker compose version check failed"
+      systemctl is-active --quiet docker || fail "docker service is not active"
+
+      log "Docker Engine and Compose v2 verified"
 
 runcmd:
   - [ bash, /opt/agflow/bootstrap-data-disk.sh ]

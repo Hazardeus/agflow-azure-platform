@@ -27,7 +27,11 @@ write_files:
 
       # Two independent, read-only, low-level probes that bypass any cache and never mutate the disk.
       DETECTED_TYPE="$(blkid -p -o value -s TYPE "${DEVICE}" 2>/dev/null || true)"
-      SIGNATURE_COUNT="$(wipefs -n "${DEVICE}" 2>/dev/null | grep -c . || true)"
+      # --noheadings + explicit --output TYPE avoids parsing wipefs's default tabular header/columns.
+      SIGNATURE_COUNT="$(
+        wipefs -n --noheadings --output TYPE "${DEVICE}" 2>/dev/null |
+          awk 'NF { count++ } END { print count+0 }'
+      )"
 
       if [ "${DETECTED_TYPE}" = "${EXPECTED_FSTYPE}" ] && [ "${SIGNATURE_COUNT}" -eq 1 ]; then
         # Confirmed, unambiguous existing ext4 filesystem — reuse it, never format.

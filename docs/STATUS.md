@@ -423,6 +423,7 @@ Current accepted decisions:
 * [ADR-0002 — Environment-aware Azure resource naming](adr/0002-environment-resource-naming.md)
 * [ADR-0003 — Shared network foundation and outbound connectivity](adr/0003-shared-network-foundation.md)
 * [ADR-0004 — Managed Identities and workspace provisioning RBAC](adr/0004-managed-identities-rbac.md)
+* [ADR-0005 — Shared Storage Foundation](adr/0005-shared-storage-foundation.md)
 
 Future major architectural decisions should be captured as ADRs when they affect areas such as:
 
@@ -465,19 +466,19 @@ A successful compile is not sufficient authorization to deploy.
 
 ## Current next action
 
-Begin Milestone 4 — Shared Storage: design and implement the durable Azure
-storage required by the platform, backups, or shared platform services, per
-the [Planned milestones](#planned-milestones) scope above.
+Review Milestone 4 with a subscription-level Azure what-if, then seek
+explicit deployment approval.
 
-Milestone 3 is complete. It delivered:
+Milestone 4 is implemented per ADR-0005 and locally validated (lint, build,
+build-params), but not yet deployed. It delivered:
 
-- the control-plane Managed Identity (no RBAC yet);
-- the DevPod/OpenTofu workspace provisioning identity;
-- least-privilege RBAC assignments per ADR-0004;
-- the permission boundary between:
-  - `rg-agflow-platform-lab`;
-  - `rg-agflow-workspaces-lab`;
-  - `snet-workspaces`.
+- one foundational `StorageV2` Storage Account in `rg-agflow-platform-lab`;
+- LAB SKU `Standard_LRS`, parameterized per environment;
+- an explicit security baseline (HTTPS-only, TLS 1.2 minimum, no anonymous
+  Blob access, no Shared Key authorization, OAuth as the default
+  authentication mode, no cross-tenant replication, no trusted-services
+  network bypass);
+- Blob versioning and Blob soft delete (7-day retention for LAB).
 
-No compute, storage, Foundry, Private Endpoint or application deployment
-was in scope for Milestone 3.
+No containers, file shares, queues, tables, lifecycle policy, RBAC
+assignments, or Private Endpoints were in scope for Milestone 4.

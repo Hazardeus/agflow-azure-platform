@@ -23,3 +23,4 @@ A new ADR should supersede the previous one.
 | [ADR-0002](0002-environment-resource-naming.md) | Environment-aware Azure resource naming | Accepted |
 | [ADR-0003](0003-shared-network-foundation.md) | Shared network foundation and outbound connectivity | Accepted |
 | [ADR-0004](0004-managed-identities-rbac.md) | Managed Identities and workspace provisioning RBAC | Accepted |
+| [ADR-0005](0005-shared-storage-foundation.md) | Shared Storage Foundation | Accepted |

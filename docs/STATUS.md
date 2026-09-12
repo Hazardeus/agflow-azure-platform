@@ -27,7 +27,8 @@ Status: **In progress**
 
 The repository structure, development governance, multi-agent instructions, architectural boundaries, and minimal Bicep foundation are being established before the first Azure resource is created.
 
-No Azure infrastructure has been deployed by this repository yet.
+The two platform Resource Groups have been deployed (Milestone 1). No other
+Azure infrastructure has been deployed by this repository yet.
 
 ---
 
@@ -117,54 +118,35 @@ Current characteristics:
 * environment-specific values are stored in `.bicepparam`;
 * no secrets are stored in Bicep source or parameter files;
 * `infra/modules/resource-groups.bicep` declares the two platform Resource
-  Groups (Milestone 1, not yet deployed — see below).
+  Groups (Milestone 1, deployed — see below).
 
 The current Bicep skeleton has been successfully validated with the Bicep compiler and analyzer.
+
+### Milestone 1 — Azure Resource Groups
+
+Status: **Completed**
+
+Implemented and deployed:
+
+* `rg-agflow-platform-lab`
+* `rg-agflow-workspaces-lab`
+
+Validation completed:
+
+* Bicep lint
+* Bicep build
+* Bicep parameter build
+* subscription-level Azure `what-if`
+* Azure deployment
+* post-deployment verification
 
 ---
 
 ## Current milestone
 
-### Milestone 0 — Establish project baseline
+### Milestone 2 — Networking
 
-Status: **Completed**
-
-### Milestone 1 — Azure Resource Groups
-
-Status: **In progress**
-
-The first infrastructure implementation will create only:
-
-```text
-rg-agflow-platform-{environment}
-rg-agflow-workspaces-{environment}
-```
-
-The change must:
-
-1. be implemented in Bicep;
-2. preserve subscription-level deployment scope;
-3. introduce appropriate common tags;
-4. compile successfully;
-5. pass Bicep linting;
-6. be reviewed before deployment;
-7. be validated using subscription-level Azure `what-if`.
-
-No actual Azure deployment should occur until the `what-if` output has been reviewed.
-
-Implemented so far:
-
-* `infra/modules/resource-groups.bicep` defines both Resource Groups with
-  environment-aware names per ADR-0002 and the common/purpose tags;
-* `infra/main.bicep` invokes the module and exposes the Resource Group
-  names/IDs as outputs;
-* `az bicep lint`, `az bicep build`, and `az bicep build-params` (lab) all
-  pass with no errors or warnings.
-
-Remaining before this milestone is complete:
-
-* review the subscription-level `what-if` output;
-* explicit approval and deployment.
+Status: **Not started**
 
 ---
 
@@ -392,11 +374,7 @@ A successful compile is not sufficient authorization to deploy.
 
 ## Current next action
 
-Run and review the subscription-level Azure `what-if` for Milestone 1.
+Scope and propose the implementation plan for **Milestone 2 — Networking**.
 
-The expected changes are limited to:
-
-* `rg-agflow-platform-lab`
-* `rg-agflow-workspaces-lab`
-
-No deployment should occur until the `what-if` output has been reviewed and explicitly approved.
+No networking resources should be introduced until that plan has been
+reviewed and explicitly approved.

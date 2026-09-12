@@ -127,28 +127,7 @@ The current Bicep skeleton has been successfully validated with the Bicep compil
 
 ### Milestone 0 — Establish project baseline
 
-Objective:
-
-Create a clean, committed baseline containing:
-
-* repository governance;
-* multi-agent instructions;
-* architecture documentation;
-* development workflow;
-* ADR mechanism;
-* Bicep skeleton;
-* environment parameter structure.
-
-Before this milestone is considered complete:
-
-* all baseline files must be tracked in Git;
-* Bicep lint/build validation must pass;
-* generated ARM JSON must not be unintentionally committed;
-* the baseline must be committed and pushed.
-
----
-
-## Next milestone
+Status: **Completed**
 
 ### Milestone 1 — Azure Resource Groups
 
@@ -290,7 +269,6 @@ OpenTofu must consume existing shared infrastructure rather than recreate it.
 
 The following components have intentionally not been implemented yet:
 
-* Azure Resource Groups;
 * VNet;
 * subnets;
 * NSGs;
@@ -371,6 +349,7 @@ These VMs are ephemeral infrastructure and remain outside Bicep ownership.
 Current accepted decisions:
 
 * [ADR-0001 — Infrastructure ownership boundaries](adr/0001-iac-ownership-boundaries.md)
+* [ADR-0002 — Environment-aware Azure resource naming](adr/0002-environment-resource-naming.md)
 
 Future major architectural decisions should be captured as ADRs when they affect areas such as:
 
@@ -413,13 +392,11 @@ A successful compile is not sufficient authorization to deploy.
 
 ## Current next action
 
-Complete and commit the repository baseline.
+Run and review the subscription-level Azure `what-if` for Milestone 1.
 
-After that, begin **Milestone 1 — Resource Groups** and implement only:
+The expected changes are limited to:
 
-```text
-rg-agflow-platform-{environment}
-rg-agflow-workspaces-{environment}
-```
+* `rg-agflow-platform-lab`
+* `rg-agflow-workspaces-lab`
 
-No networking, identities, VM, storage, Foundry, or DevPod resources should be introduced during that milestone.
+No deployment should occur until the `what-if` output has been reviewed and explicitly approved.

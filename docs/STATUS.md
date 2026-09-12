@@ -21,14 +21,13 @@ For the development workflow, see [`DEVELOPMENT.md`](DEVELOPMENT.md).
 
 ## Current phase
 
-**Milestone 3 — Managed Identities and RBAC**
+**Milestone 4 — Shared Storage**
 
-Status: **Implemented, pending what-if review and deployment approval**
+Status: **Not started**
 
-Milestone 1 (Resource Groups) and Milestone 2 (shared network foundation) are
-both implemented, deployed to LAB, and post-deployment verified. Milestone 3
-(Managed Identities and RBAC) is implemented in Bicep per ADR-0004, validated
-with lint/build/build-params, and not yet deployed.
+Milestones 1 (Resource Groups), 2 (shared network foundation), and 3
+(Managed Identities and RBAC) are all implemented, deployed to LAB, and
+post-deployment verified.
 
 ---
 
@@ -166,7 +165,7 @@ Outbound connectivity remains intentionally deferred according to ADR-0003.
 
 ### Milestone 3 — Managed Identities and RBAC
 
-Status: **Implemented, pending what-if review and deployment approval**
+Status: **Completed**
 
 Implemented per [ADR-0004](adr/0004-managed-identities-rbac.md):
 
@@ -190,17 +189,27 @@ Validation completed:
 * Bicep lint
 * Bicep build
 * Bicep parameter build
+* subscription-level Azure `what-if`
+* Azure deployment
+* post-deployment verification
 
-Not yet done: subscription-level Azure `what-if`, deployment, post-deployment
-verification.
+Post-deployment verification confirmed against live Azure state:
+
+* `id-agflow-control-plane-lab` exists with no role assignments;
+* `id-agflow-workspace-provisioner-lab` exists with exactly:
+  * **Virtual Machine Contributor** on `rg-agflow-workspaces-lab`;
+  * **Agflow Workspace Subnet Joiner** on `snet-workspaces`;
+* the custom role contains exactly subnet `read` and `join/action`;
+* a subsequent idempotence `what-if` showed no unexpected create/delete
+  operations (the recurring UAMI `isolationScope` diff is known `what-if`
+  noise and not an actual drift).
 
 ---
 
 ## Current milestone
 
-**Milestone 3 — Managed Identities and RBAC** is implemented and awaiting
-`what-if` review and explicit deployment approval. See
-[Planned milestones](#planned-milestones) below for what follows.
+**Milestone 4 — Shared Storage** has not started. See
+[Planned milestones](#planned-milestones) below for details.
 
 ---
 
@@ -425,10 +434,11 @@ A successful compile is not sufficient authorization to deploy.
 
 ## Current next action
 
-Review Milestone 3 — Managed Identities and RBAC with a subscription-level
-`what-if`, then seek explicit deployment approval.
+Begin Milestone 4 — Shared Storage: design and implement the durable Azure
+storage required by the platform, backups, or shared platform services, per
+the [Planned milestones](#planned-milestones) scope above.
 
-Milestone 3 as implemented defines:
+Milestone 3 is complete. It delivered:
 
 - the control-plane Managed Identity (no RBAC yet);
 - the DevPod/OpenTofu workspace provisioning identity;
@@ -439,4 +449,4 @@ Milestone 3 as implemented defines:
   - `snet-workspaces`.
 
 No compute, storage, Foundry, Private Endpoint or application deployment
-is in scope for Milestone 3.
+was in scope for Milestone 3.

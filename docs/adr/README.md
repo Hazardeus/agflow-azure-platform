@@ -24,3 +24,4 @@ A new ADR should supersede the previous one.
 | [ADR-0003](0003-shared-network-foundation.md) | Shared network foundation and outbound connectivity | Accepted |
 | [ADR-0004](0004-managed-identities-rbac.md) | Managed Identities and workspace provisioning RBAC | Accepted |
 | [ADR-0005](0005-shared-storage-foundation.md) | Shared Storage Foundation | Accepted |
+| [ADR-0006](0006-control-plane-compute-persistence-lab-egress.md) | Control-plane Compute, Persistence and LAB Egress | Accepted |

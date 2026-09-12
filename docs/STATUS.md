@@ -21,13 +21,13 @@ For the development workflow, see [`DEVELOPMENT.md`](DEVELOPMENT.md).
 
 ## Current phase
 
-**Milestone 4 — Shared Storage**
+**Milestone 5 — Control-plane VM**
 
-Status: **Implemented, pending what-if review and deployment approval**
+Status: **Not started**
 
-Milestones 1 (Resource Groups), 2 (shared network foundation), and 3
-(Managed Identities and RBAC) are all implemented, deployed to LAB, and
-post-deployment verified.
+Milestones 1 (Resource Groups), 2 (shared network foundation), 3
+(Managed Identities and RBAC), and 4 (Shared Storage) are all implemented,
+deployed to LAB, and post-deployment verified.
 
 ---
 
@@ -206,23 +206,25 @@ Post-deployment verification confirmed against live Azure state:
 
 ### Milestone 4 — Shared Storage
 
-Status: **Implemented, pending what-if review and deployment approval**
+Status: **Completed**
 
-Implemented per [ADR-0005](adr/0005-shared-storage-foundation.md):
+Implemented per [ADR-0005](adr/0005-shared-storage-foundation.md) and
+deployed to LAB:
 
-* one foundational `Microsoft.Storage/storageAccounts` (StorageV2, Hot
-  access tier) in `rg-agflow-platform-lab`, named deterministically from
-  the solution name, environment name, and a subscription-derived unique
-  suffix;
-* LAB SKU `Standard_LRS`, parameterized per environment;
-* security baseline: HTTPS-only, TLS 1.2 minimum, public network access
-  enabled (transport only), anonymous Blob access disabled, Shared Key
-  authorization disabled;
-* Blob versioning and Blob soft delete (7-day retention for LAB, also
-  parameterized) as a baseline data-protection layer;
-* no containers, file shares, queues, tables, lifecycle policy, RBAC
-  assignments, or Private Endpoints — all deferred to the milestone that
-  introduces a concrete consumer.
+* Storage account `stagflowlab56xw4a7zc653` — `StorageV2`, `Hot` access
+  tier, in `rg-agflow-platform-lab`;
+* SKU `Standard_LRS` for LAB, parameterized per environment;
+* security baseline: HTTPS only, minimum TLS 1.2, anonymous Blob access
+  disabled, Shared Key authorization disabled, Entra ID/OAuth enabled as
+  the default authentication mode, cross-tenant replication disabled,
+  network ACL `defaultAction: Allow` / `bypass: None` (no trusted-services
+  exception);
+* Blob versioning enabled; Blob soft delete enabled with 7-day retention
+  for LAB (parameterized); permanent deletion of soft-deleted data
+  disabled; Blob static website hosting disabled;
+* no containers, file shares, queues, tables, lifecycle policy, workload
+  RBAC assignments, or Private Endpoints — all deferred to the milestone
+  that introduces a concrete consumer.
 
 New module: `infra/modules/storage.bicep`.
 
@@ -231,17 +233,23 @@ Validation completed:
 * Bicep lint
 * Bicep build
 * Bicep parameter build
+* subscription-level Azure `what-if`
+* Azure deployment
+* post-deployment verification
+* second idempotence `what-if`
 
-Still pending: subscription-level Azure `what-if` review, explicit
-deployment approval, deployment, and post-deployment verification.
+The idempotence `what-if` reported 2 to modify, 11 no change — the two
+Modify entries are the known `isolationScope` false positives on
+`id-agflow-control-plane-lab` and `id-agflow-workspace-provisioner-lab`
+(already noted under Milestone 3), not actual drift. The Storage Account
+and `blobServices/default` reported no change.
 
 ---
 
 ## Current milestone
 
-**Milestone 4 — Shared Storage** is implemented and locally validated, but
-not yet deployed. See [Planned milestones](#planned-milestones) below for
-details.
+**Milestone 5 — Control-plane VM** has not started. See
+[Planned milestones](#planned-milestones) below for details.
 
 ---
 
@@ -466,19 +474,13 @@ A successful compile is not sufficient authorization to deploy.
 
 ## Current next action
 
-Review Milestone 4 with a subscription-level Azure what-if, then seek
-explicit deployment approval.
+Begin Milestone 5 — Control-plane VM: design the initial control-plane
+compute in Sweden Central, per the
+[Planned milestones](#planned-milestones) scope above.
 
-Milestone 4 is implemented per ADR-0005 and locally validated (lint, build,
-build-params), but not yet deployed. It delivered:
+Milestone 4 is complete. It delivered the foundational shared Storage
+Account described under Milestone 4 above, deployed to LAB and verified
+with a second idempotence `what-if`.
 
-- one foundational `StorageV2` Storage Account in `rg-agflow-platform-lab`;
-- LAB SKU `Standard_LRS`, parameterized per environment;
-- an explicit security baseline (HTTPS-only, TLS 1.2 minimum, no anonymous
-  Blob access, no Shared Key authorization, OAuth as the default
-  authentication mode, no cross-tenant replication, no trusted-services
-  network bypass);
-- Blob versioning and Blob soft delete (7-day retention for LAB).
-
-No containers, file shares, queues, tables, lifecycle policy, RBAC
-assignments, or Private Endpoints were in scope for Milestone 4.
+No control-plane VM, Microsoft Foundry, Private Endpoint, or application
+deployment work was in scope for Milestone 4.

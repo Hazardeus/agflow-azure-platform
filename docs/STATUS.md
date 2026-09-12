@@ -146,7 +146,27 @@ Validation completed:
 
 ### Milestone 2 — Networking
 
-Status: **In progress**
+Status: **Implemented, pending `what-if` review and deployment approval**
+
+`infra/modules/networking.bicep` declares the shared LAB network foundation:
+
+* `vnet-agflow-lab` (`10.20.0.0/16`);
+* `snet-control` (`10.20.1.0/24`), `snet-workspaces` (`10.20.2.0/24`),
+  `snet-private-endpoints` (`10.20.3.0/24`);
+* `nsg-agflow-control-lab`, `nsg-agflow-workspaces-lab`, associated with
+  `snet-control` and `snet-workspaces` respectively.
+
+All subnets use `defaultOutboundAccess: false`; no NAT Gateway, Public IP, or
+other outbound connectivity resource is created (see ADR-0003). No custom NSG
+security rules were added.
+
+Validation completed:
+
+* Bicep lint
+* Bicep build
+* Bicep parameter build
+
+Azure `what-if` and deployment have not been run yet.
 
 ---
 
@@ -251,9 +271,6 @@ OpenTofu must consume existing shared infrastructure rather than recreate it.
 
 The following components have intentionally not been implemented yet:
 
-* VNet;
-* subnets;
-* NSGs;
 * Managed Identities;
 * RBAC;
 * Azure storage;
@@ -375,9 +392,10 @@ A successful compile is not sufficient authorization to deploy.
 
 ## Current next action
 
-Implement and validate the approved Milestone 2 network foundation.
+Review the Milestone 2 networking implementation, run a subscription-level
+`what-if`, and obtain explicit approval before deploying.
 
-Approved scope:
+Approved scope (implemented):
 
 * `vnet-agflow-lab`
 * `snet-control`

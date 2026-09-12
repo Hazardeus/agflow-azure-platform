@@ -146,7 +146,27 @@ Validation completed:
 
 ### Milestone 2 — Networking
 
-Status: **Not started**
+Status: **Implemented, pending `what-if` review and deployment approval**
+
+`infra/modules/networking.bicep` declares the shared LAB network foundation:
+
+* `vnet-agflow-lab` (`10.20.0.0/16`);
+* `snet-control` (`10.20.1.0/24`), `snet-workspaces` (`10.20.2.0/24`),
+  `snet-private-endpoints` (`10.20.3.0/24`);
+* `nsg-agflow-control-lab`, `nsg-agflow-workspaces-lab`, associated with
+  `snet-control` and `snet-workspaces` respectively.
+
+All subnets use `defaultOutboundAccess: false`; no NAT Gateway, Public IP, or
+other outbound connectivity resource is created (see ADR-0003). No custom NSG
+security rules were added.
+
+Validation completed:
+
+* Bicep lint
+* Bicep build
+* Bicep parameter build
+
+Azure `what-if` and deployment have not been run yet.
 
 ---
 
@@ -251,9 +271,6 @@ OpenTofu must consume existing shared infrastructure rather than recreate it.
 
 The following components have intentionally not been implemented yet:
 
-* VNet;
-* subnets;
-* NSGs;
 * Managed Identities;
 * RBAC;
 * Azure storage;
@@ -332,6 +349,7 @@ Current accepted decisions:
 
 * [ADR-0001 — Infrastructure ownership boundaries](adr/0001-iac-ownership-boundaries.md)
 * [ADR-0002 — Environment-aware Azure resource naming](adr/0002-environment-resource-naming.md)
+* [ADR-0003 — Shared network foundation and outbound connectivity](adr/0003-shared-network-foundation.md)
 
 Future major architectural decisions should be captured as ADRs when they affect areas such as:
 
@@ -374,7 +392,17 @@ A successful compile is not sufficient authorization to deploy.
 
 ## Current next action
 
-Scope and propose the implementation plan for **Milestone 2 — Networking**.
+Review the Milestone 2 networking implementation, run a subscription-level
+`what-if`, and obtain explicit approval before deploying.
 
-No networking resources should be introduced until that plan has been
-reviewed and explicitly approved.
+Approved scope (implemented):
+
+* `vnet-agflow-lab`
+* `snet-control`
+* `snet-workspaces`
+* `snet-private-endpoints`
+* `nsg-agflow-control-lab`
+* `nsg-agflow-workspaces-lab`
+
+No compute, identity, storage, Foundry, NAT Gateway, Public IP,
+Private Endpoint, Private DNS or DevPod workspace resources are in scope.

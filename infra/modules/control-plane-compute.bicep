@@ -78,11 +78,11 @@ var commonTags = {
   purpose: 'control-plane'
 }
 
-var publicIpName = 'pip-agflow-control-${environmentName}'
-var nicName = 'nic-agflow-control-${environmentName}'
-var osDiskName = 'disk-agflow-control-os-${environmentName}'
-var dataDiskName = 'disk-agflow-control-data-${environmentName}'
-var vmName = 'vm-agflow-control-${environmentName}'
+var publicIpName = 'pip-${solutionName}-control-${environmentName}'
+var nicName = 'nic-${solutionName}-control-${environmentName}'
+var osDiskName = 'disk-${solutionName}-control-os-${environmentName}'
+var dataDiskName = 'disk-${solutionName}-control-data-${environmentName}'
+var vmName = 'vm-${solutionName}-control-${environmentName}'
 
 // ADR-0006 §2: Spot-only properties must not appear when a future environment chooses Regular priority.
 var isSpot = vmPriority == 'Spot'

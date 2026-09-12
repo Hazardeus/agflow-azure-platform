@@ -11,29 +11,52 @@ write_files:
 
       DEVICE="/dev/disk/azure/scsi1/lun0"
       MOUNT_POINT="/srv/agflow"
+      EXPECTED_FSTYPE="ext4"
+
+      log() { echo "agflow-bootstrap: $*"; }
+      fail() { echo "agflow-bootstrap: ERROR: $*" >&2; exit 1; }
 
       # Wait for the Azure data disk (fixed LUN 0) to be enumerated by the OS.
       for _ in $(seq 1 30); do
         [ -e "${DEVICE}" ] && break
         sleep 2
       done
+      [ -e "${DEVICE}" ] || fail "data disk ${DEVICE} did not appear, aborting disk setup"
 
-      if [ ! -e "${DEVICE}" ]; then
-        echo "agflow-bootstrap: data disk ${DEVICE} did not appear, aborting disk setup" >&2
-        exit 1
+      log "device inspection: $(lsblk -no NAME,TYPE,FSTYPE,MOUNTPOINT "${DEVICE}" 2>/dev/null | tr '\n' ';')"
+
+      # Two independent, read-only, low-level probes that bypass any cache and never mutate the disk.
+      # A blkid failure alone is not proof of an empty disk, so both must agree before anything is formatted.
+      DETECTED_TYPE="$(blkid -p -o value -s TYPE "${DEVICE}" 2>/dev/null || true)"
+      SIGNATURE_COUNT="$(wipefs -n "${DEVICE}" 2>/dev/null | grep -c . || true)"
+
+      if [ -z "${DETECTED_TYPE}" ] && [ "${SIGNATURE_COUNT}" -eq 0 ]; then
+        # Both probes agree: no filesystem, partition table, or other signature of any kind.
+        log "no signature detected on ${DEVICE}; formatting as ${EXPECTED_FSTYPE}"
+        mkfs.ext4 -L agflow-data "${DEVICE}"
+      elif [ "${DETECTED_TYPE}" = "${EXPECTED_FSTYPE}" ] && [ "${SIGNATURE_COUNT}" -eq 1 ]; then
+        log "existing ${EXPECTED_FSTYPE} filesystem confirmed on ${DEVICE}; will not format"
+      else
+        # Anything else (unrecognized/foreign filesystem, partition table, RAID/LVM metadata, or more
+        # than one signature) fails closed instead of risking data that may not be ours.
+        fail "device ${DEVICE} has an unrecognized or ambiguous signature (blkid type='${DETECTED_TYPE:-none}', wipefs signature count=${SIGNATURE_COUNT}); refusing to format"
       fi
+
+      DISK_UUID="$(blkid -p -o value -s UUID "${DEVICE}")"
+      [ -n "${DISK_UUID}" ] || fail "could not determine UUID for ${DEVICE} after confirming/creating ${EXPECTED_FSTYPE}"
 
       mkdir -p "${MOUNT_POINT}"
 
-      # Only format a disk with no existing filesystem signature; never reformat existing data.
-      if ! blkid "${DEVICE}" >/dev/null 2>&1; then
-        mkfs.ext4 -L agflow-data "${DEVICE}"
+      # Drop any existing fstab entry for this mount point that points at a different UUID, so a
+      # stale/conflicting entry can never silently coexist with the correct one.
+      if [ -f /etc/fstab ]; then
+        awk -v mp="${MOUNT_POINT}" -v uuid="UUID=${DISK_UUID}" \
+          '($2 != mp) || ($1 == uuid) { print }' /etc/fstab > /etc/fstab.agflow.tmp
+        mv /etc/fstab.agflow.tmp /etc/fstab
       fi
 
-      DISK_UUID=$(blkid -s UUID -o value "${DEVICE}")
-
-      if ! grep -q "${DISK_UUID}" /etc/fstab; then
-        echo "UUID=${DISK_UUID} ${MOUNT_POINT} ext4 defaults,nofail 0 2" >> /etc/fstab
+      if ! grep -qF "UUID=${DISK_UUID} " /etc/fstab; then
+        printf 'UUID=%s %s %s defaults,nofail 0 2\n' "${DISK_UUID}" "${MOUNT_POINT}" "${EXPECTED_FSTYPE}" >> /etc/fstab
       fi
 
       mount -a

@@ -1,0 +1,44 @@
+# VS Code
+.vscode/
+*.code-workspace
+
+# Secrets / local configuration
+.env
+.env.*
+!.env.example
+*.local.json
+*.local.bicepparam
+
+# Azure CLI local state
+.azure/
+
+# Logs / temporary files
+*.log
+*.tmp
+*.bak
+
+# Certificates / private keys
+*.pem
+*.key
+*.pfx
+
+# OS
+.DS_Store
+Thumbs.db
+
+# OpenTofu / Terraform - safety
+.terraform/
+*.tfstate
+*.tfstate.*
+.terraform.tfstate.lock.info
+
+# Python / Node if tooling is added later
+__pycache__/
+node_modules/
+
+# Generated Bicep / ARM output
+**/main.json
+
+# Generated Bicep build output
+infra/**/*.json
+!infra/**/bicepconfig.json

@@ -21,13 +21,13 @@ For the development workflow, see [`DEVELOPMENT.md`](DEVELOPMENT.md).
 
 ## Current phase
 
-**Milestone 4 — Shared Storage**
+**Milestone 5 — Control-plane VM**
 
 Status: **Not started**
 
-Milestones 1 (Resource Groups), 2 (shared network foundation), and 3
-(Managed Identities and RBAC) are all implemented, deployed to LAB, and
-post-deployment verified.
+Milestones 1 (Resource Groups), 2 (shared network foundation), 3
+(Managed Identities and RBAC), and 4 (Shared Storage) are all implemented,
+deployed to LAB, and post-deployment verified.
 
 ---
 
@@ -204,11 +204,51 @@ Post-deployment verification confirmed against live Azure state:
   operations (the recurring UAMI `isolationScope` diff is known `what-if`
   noise and not an actual drift).
 
+### Milestone 4 — Shared Storage
+
+Status: **Completed**
+
+Implemented per [ADR-0005](adr/0005-shared-storage-foundation.md) and
+deployed to LAB:
+
+* Storage account `stagflowlab56xw4a7zc653` — `StorageV2`, `Hot` access
+  tier, in `rg-agflow-platform-lab`;
+* SKU `Standard_LRS` for LAB, parameterized per environment;
+* security baseline: HTTPS only, minimum TLS 1.2, anonymous Blob access
+  disabled, Shared Key authorization disabled, Entra ID/OAuth enabled as
+  the default authentication mode, cross-tenant replication disabled,
+  network ACL `defaultAction: Allow` / `bypass: None` (no trusted-services
+  exception);
+* Blob versioning enabled; Blob soft delete enabled with 7-day retention
+  for LAB (parameterized); permanent deletion of soft-deleted data
+  disabled; Blob static website hosting disabled;
+* no containers, file shares, queues, tables, lifecycle policy, workload
+  RBAC assignments, or Private Endpoints — all deferred to the milestone
+  that introduces a concrete consumer.
+
+New module: `infra/modules/storage.bicep`.
+
+Validation completed:
+
+* Bicep lint
+* Bicep build
+* Bicep parameter build
+* subscription-level Azure `what-if`
+* Azure deployment
+* post-deployment verification
+* second idempotence `what-if`
+
+The idempotence `what-if` reported 2 to modify, 11 no change — the two
+Modify entries are the known `isolationScope` false positives on
+`id-agflow-control-plane-lab` and `id-agflow-workspace-provisioner-lab`
+(already noted under Milestone 3), not actual drift. The Storage Account
+and `blobServices/default` reported no change.
+
 ---
 
 ## Current milestone
 
-**Milestone 4 — Shared Storage** has not started. See
+**Milestone 5 — Control-plane VM** has not started. See
 [Planned milestones](#planned-milestones) below for details.
 
 ---
@@ -314,7 +354,6 @@ OpenTofu must consume existing shared infrastructure rather than recreate it.
 
 The following components have intentionally not been implemented yet:
 
-* Azure storage;
 * control-plane VM;
 * Microsoft Foundry resources;
 * Private Endpoints;
@@ -392,6 +431,7 @@ Current accepted decisions:
 * [ADR-0002 — Environment-aware Azure resource naming](adr/0002-environment-resource-naming.md)
 * [ADR-0003 — Shared network foundation and outbound connectivity](adr/0003-shared-network-foundation.md)
 * [ADR-0004 — Managed Identities and workspace provisioning RBAC](adr/0004-managed-identities-rbac.md)
+* [ADR-0005 — Shared Storage Foundation](adr/0005-shared-storage-foundation.md)
 
 Future major architectural decisions should be captured as ADRs when they affect areas such as:
 
@@ -434,19 +474,13 @@ A successful compile is not sufficient authorization to deploy.
 
 ## Current next action
 
-Begin Milestone 4 — Shared Storage: design and implement the durable Azure
-storage required by the platform, backups, or shared platform services, per
-the [Planned milestones](#planned-milestones) scope above.
+Begin Milestone 5 — Control-plane VM: design the initial control-plane
+compute in Sweden Central, per the
+[Planned milestones](#planned-milestones) scope above.
 
-Milestone 3 is complete. It delivered:
+Milestone 4 is complete. It delivered the foundational shared Storage
+Account described under Milestone 4 above, deployed to LAB and verified
+with a second idempotence `what-if`.
 
-- the control-plane Managed Identity (no RBAC yet);
-- the DevPod/OpenTofu workspace provisioning identity;
-- least-privilege RBAC assignments per ADR-0004;
-- the permission boundary between:
-  - `rg-agflow-platform-lab`;
-  - `rg-agflow-workspaces-lab`;
-  - `snet-workspaces`.
-
-No compute, storage, Foundry, Private Endpoint or application deployment
-was in scope for Milestone 3.
+No control-plane VM, Microsoft Foundry, Private Endpoint, or application
+deployment work was in scope for Milestone 4.

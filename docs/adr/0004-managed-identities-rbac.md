@@ -132,11 +132,22 @@ Instead, a custom role is introduced:
 
 | | |
 |---|---|
-| Role name | `Agflow Workspace Subnet Joiner` |
+| Logical role name | `Agflow Workspace Subnet Joiner` |
+| Azure display name (`roleName`) | `Agflow Workspace Subnet Joiner - {environment}-{uniqueString(subscription().id)}` |
 | Actions | `Microsoft.Network/virtualNetworks/subnets/read`, `Microsoft.Network/virtualNetworks/subnets/join/action` |
 | NotActions | none |
 | Assignable scope | `rg-agflow-platform-{environment}` (the resource group containing `vnet-agflow-{environment}` / `snet-workspaces`) |
 | Assignment scope | `snet-workspaces` only (not the VNet, not the resource group) |
+
+Azure custom role display names must be unique within the Microsoft Entra
+tenant, even though this role's `assignableScopes` is narrower (one resource
+group). The logical role remains "Agflow Workspace Subnet Joiner"
+throughout this ADR and the codebase; the Azure-facing `roleName` appends a
+deterministic `{environment}-{uniqueString(subscription().id)}` suffix so
+the same logical role can be deployed to lab, dev, and prod — or to
+different subscriptions — without a display-name collision. The role
+definition's GUID (`name`) is unaffected and remains seeded from
+`subscription().id`, `environmentName`, and a fixed string.
 
 The custom role definition is durable Bicep-owned platform infrastructure,
 in the same sense as the VNet and subnets it governs. Its assignable scope

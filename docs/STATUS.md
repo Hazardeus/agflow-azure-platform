@@ -21,13 +21,14 @@ For the development workflow, see [`DEVELOPMENT.md`](DEVELOPMENT.md).
 
 ## Current phase
 
-**Milestone 2 — Networking**
+**Milestone 3 — Managed Identities and RBAC**
 
-Status: **Completed**
+Status: **Implemented, pending what-if review and deployment approval**
 
 Milestone 1 (Resource Groups) and Milestone 2 (shared network foundation) are
 both implemented, deployed to LAB, and post-deployment verified. Milestone 3
-(Managed Identities and RBAC) has not started yet.
+(Managed Identities and RBAC) is implemented in Bicep per ADR-0004, validated
+with lint/build/build-params, and not yet deployed.
 
 ---
 
@@ -163,12 +164,43 @@ Validation completed:
 
 Outbound connectivity remains intentionally deferred according to ADR-0003.
 
+### Milestone 3 — Managed Identities and RBAC
+
+Status: **Implemented, pending what-if review and deployment approval**
+
+Implemented per [ADR-0004](adr/0004-managed-identities-rbac.md):
+
+* `id-agflow-control-plane-lab` (user-assigned managed identity, no RBAC
+  assignments in Milestone 3);
+* `id-agflow-workspace-provisioner-lab` (user-assigned managed identity),
+  granted:
+  * **Virtual Machine Contributor** (`9980e02c-c2be-4d73-94e8-173b1dc7cf3c`)
+    scoped to `rg-agflow-workspaces-lab`;
+  * custom role **Agflow Workspace Subnet Joiner**
+    (`Microsoft.Network/virtualNetworks/subnets/read`,
+    `Microsoft.Network/virtualNetworks/subnets/join/action` only) scoped
+    only to `snet-workspaces`.
+
+Both identities are created in `rg-agflow-platform-lab`. New modules:
+`infra/modules/identities.bicep`, `infra/modules/rbac-workspace-rg.bicep`,
+`infra/modules/rbac-workspace-subnet.bicep`.
+
+Validation completed:
+
+* Bicep lint
+* Bicep build
+* Bicep parameter build
+
+Not yet done: subscription-level Azure `what-if`, deployment, post-deployment
+verification.
+
 ---
 
 ## Current milestone
 
-None in progress. Milestone 3 (Managed Identities and RBAC) has not started
-yet — see [Planned milestones](#planned-milestones) below.
+**Milestone 3 — Managed Identities and RBAC** is implemented and awaiting
+`what-if` review and explicit deployment approval. See
+[Planned milestones](#planned-milestones) below for what follows.
 
 ---
 
@@ -273,8 +305,6 @@ OpenTofu must consume existing shared infrastructure rather than recreate it.
 
 The following components have intentionally not been implemented yet:
 
-* Managed Identities;
-* RBAC;
 * Azure storage;
 * control-plane VM;
 * Microsoft Foundry resources;
@@ -352,6 +382,7 @@ Current accepted decisions:
 * [ADR-0001 — Infrastructure ownership boundaries](adr/0001-iac-ownership-boundaries.md)
 * [ADR-0002 — Environment-aware Azure resource naming](adr/0002-environment-resource-naming.md)
 * [ADR-0003 — Shared network foundation and outbound connectivity](adr/0003-shared-network-foundation.md)
+* [ADR-0004 — Managed Identities and workspace provisioning RBAC](adr/0004-managed-identities-rbac.md)
 
 Future major architectural decisions should be captured as ADRs when they affect areas such as:
 
@@ -394,17 +425,18 @@ A successful compile is not sufficient authorization to deploy.
 
 ## Current next action
 
-Review the Milestone 2 networking implementation, run a subscription-level
-`what-if`, and obtain explicit approval before deploying.
+Review Milestone 3 — Managed Identities and RBAC with a subscription-level
+`what-if`, then seek explicit deployment approval.
 
-Approved scope (implemented):
+Milestone 3 as implemented defines:
 
-* `vnet-agflow-lab`
-* `snet-control`
-* `snet-workspaces`
-* `snet-private-endpoints`
-* `nsg-agflow-control-lab`
-* `nsg-agflow-workspaces-lab`
+- the control-plane Managed Identity (no RBAC yet);
+- the DevPod/OpenTofu workspace provisioning identity;
+- least-privilege RBAC assignments per ADR-0004;
+- the permission boundary between:
+  - `rg-agflow-platform-lab`;
+  - `rg-agflow-workspaces-lab`;
+  - `snet-workspaces`.
 
-No compute, identity, storage, Foundry, NAT Gateway, Public IP,
-Private Endpoint, Private DNS or DevPod workspace resources are in scope.
+No compute, storage, Foundry, Private Endpoint or application deployment
+is in scope for Milestone 3.

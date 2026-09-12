@@ -574,44 +574,571 @@ Secrets must never be stored in:
 
 ## 14. Identity and RBAC model
 
-The platform should use least privilege.
+The platform follows least-privilege principles and keeps control-plane and
+workspace-provisioning responsibilities separate.
 
-At minimum, separate identities are expected for:
+See:
 
-```text
-Control-plane identity
+- [ADR-0004 — Managed Identities and workspace provisioning RBAC](adr/0004-managed-identities-rbac.md)
 
-Workspace provisioning identity
-```
-
-The DevPod/OpenTofu provisioning identity should receive only the permissions required to create workspace resources.
-
-Expected boundary:
+Two durable User Assigned Managed Identities are defined:
 
 ```text
-Workspace provisioner
-      │
-      ├── Contributor
-      │     on rg-agflow-workspaces
-      │
-      └── limited network permission
-            on snet-workspaces
+rg-agflow-platform-{environment}
+│
+├── id-agflow-control-plane-{environment}
+│
+└── id-agflow-workspace-provisioner-{environment}
 ```
 
-It should not receive broad Contributor rights over:
+For LAB:
 
-* `rg-agflow-platform-{environment}`;
-* Foundry;
-* control-plane VM;
-* platform secrets;
-* the entire subscription.
+```text
+id-agflow-control-plane-lab
+id-agflow-workspace-provisioner-lab
+```
 
-Exact RBAC roles will be designed and recorded when that milestone is implemented.
+Both identities are long-lived Bicep-owned platform resources.
+
+### Control-plane identity
+
+```text
+id-agflow-control-plane-{environment}
+```
+
+represents the future control-plane workload.
+
+Milestone 3 intentionally grants it:
+
+```text
+RBAC: none
+```
+
+Permissions are introduced only by later milestones when a concrete consumer
+exists.
+
+Examples may eventually include:
+
+- Azure Storage;
+- Microsoft Foundry;
+- other Azure-native services.
+
+No permission is granted speculatively.
+
+### Workspace provisioner identity
+
+```text
+id-agflow-workspace-provisioner-{environment}
+```
+
+is used by devpod-ui/OpenTofu to provision and destroy ephemeral workspace
+resources.
+
+Its authorization model is:
+
+```text
+id-agflow-workspace-provisioner-lab
+│
+├── Virtual Machine Contributor
+│      │
+│      └── scope:
+│          rg-agflow-workspaces-lab
+│
+└── Agflow Workspace Subnet Joiner
+       │
+       └── scope:
+           snet-workspaces
+```
+
+### Workspace Resource Group permissions
+
+The workspace provisioner receives:
+
+```text
+Virtual Machine Contributor
+```
+
+on:
+
+```text
+rg-agflow-workspaces-{environment}
+```
+
+This built-in role is broader than the strict minimum VM/NIC/disk operation
+set, but is substantially narrower than `Contributor`.
+
+Its scope is restricted to the Resource Group dedicated to ephemeral workspace
+resources.
+
+`Contributor` is deliberately not used.
+
+### Workspace subnet permission
+
+The workspace provisioner must be able to attach workspace NICs to:
+
+```text
+snet-workspaces
+```
+
+However, `snet-workspaces` is a durable Bicep-owned shared resource.
+
+Therefore OpenTofu must not receive:
+
+```text
+Microsoft.Network/virtualNetworks/subnets/write
+Microsoft.Network/virtualNetworks/subnets/delete
+```
+
+`Network Contributor` is deliberately not used.
+
+A custom role is defined:
+
+```text
+Agflow Workspace Subnet Joiner
+```
+
+with exactly:
+
+```text
+Microsoft.Network/virtualNetworks/subnets/read
+Microsoft.Network/virtualNetworks/subnets/join/action
+```
+
+Its assignable scope covers:
+
+```text
+rg-agflow-platform-{environment}
+```
+
+but the actual role assignment is scoped only to:
+
+```text
+snet-workspaces
+```
+
+Conceptually:
+
+```text
+Workspace Provisioner
+        │
+        │ read + join only
+        ▼
+  snet-workspaces
+        │
+        ├── allowed: read
+        ├── allowed: join
+        │
+        ├── not granted by this role: write
+        └── not granted by this role: delete
+```
+
+This enforces the Bicep/OpenTofu ownership boundary through Azure RBAC rather
+than convention alone.
+
+### Explicitly prohibited permissions
+
+The workspace provisioner must not receive:
+
+- Owner;
+- User Access Administrator;
+- subscription-wide Contributor;
+- Contributor on `rg-agflow-platform-{environment}`;
+- Contributor on `rg-agflow-workspaces-{environment}`;
+- Network Contributor on the VNet;
+- Network Contributor on `snet-workspaces`;
+- permissions over `snet-control`;
+- permissions over `snet-private-endpoints`;
+- `Microsoft.Authorization/roleDefinitions/write`;
+- `Microsoft.Authorization/roleAssignments/write`.
+
+Neither runtime identity owns or modifies Azure authorization policy.
+
+### Managed Identity Operator
+
+`Managed Identity Operator` is not granted during Milestone 3.
+
+It may be introduced later only if OpenTofu must attach an Azure Managed
+Identity to workspace VMs.
+
+That permission belongs to the milestone introducing that concrete
+requirement.
 
 ---
 
-## 15. Bicep ↔ OpenTofu contract
+## 15. Future control-plane identity selection
+
+The future control-plane VM is expected to have both User Assigned Managed
+Identities attached:
+
+```text
+Control-plane VM
+│
+├── id-agflow-control-plane-lab
+│
+└── id-agflow-workspace-provisioner-lab
+```
+
+Applications running on the VM must explicitly select the identity appropriate
+for their responsibility.
+
+Normal control-plane workloads use:
+
+```text
+id-agflow-control-plane-lab
+```
+
+DevPod/OpenTofu Azure provisioning uses:
+
+```text
+id-agflow-workspace-provisioner-lab
+```
+
+The OpenTofu Azure provider must therefore be configured using the explicit:
+
+```text
+workspaceProvisionerIdentityClientId
+```
+
+Implicit Managed Identity selection must not be relied upon when several UAMIs
+are attached to the same compute resource.
+
+---
+
+## 16. Bicep ↔ OpenTofu contract
 
 Bicep owns shared Azure resources.
 
-OpenTo
+OpenTofu consumes those resources through explicit identifiers and narrowly
+scoped permissions.
+
+Conceptually:
+
+```text
+                         Bicep
+                           │
+          ┌────────────────┼─────────────────┐
+          │                │                 │
+          ▼                ▼                 ▼
+ Workspace RG      Workspace subnet       UAMI
+          │                │                 │
+          └────────────────┼─────────────────┘
+                           │
+                    platform contract
+                           │
+                           ▼
+                      devpod-ui
+                           │
+                           ▼
+                       OpenTofu
+                           │
+           ┌───────────────┼───────────────┐
+           ▼               ▼               ▼
+          VM              NIC             Disk
+                            │
+                            ▼
+                    snet-workspaces
+```
+
+The platform contract is expected to contain values such as:
+
+```text
+subscription ID
+Azure location
+workspace resource group
+workspace subnet ID
+workspace provisioner identity ID
+workspace provisioner identity client ID
+```
+
+Bicep exposes values required by future platform consumers.
+
+OpenTofu consumes existing shared resources but does not create, update, or
+delete them.
+
+The ownership rule remains:
+
+```text
+Bicep
+→ shared platform infrastructure
+
+OpenTofu
+→ ephemeral workspace infrastructure
+```
+
+---
+
+## 17. Bicep module architecture
+
+The root Bicep deployment remains:
+
+```text
+targetScope = subscription
+```
+
+The intended module structure evolves incrementally.
+
+Conceptually:
+
+```text
+infra/main.bicep
+│
+├── modules/resource-groups.bicep
+│
+├── modules/networking.bicep
+│
+├── modules/identities.bicep
+│
+└── RBAC modules
+    ├── workspace resource-group assignment
+    └── workspace subnet custom-role assignment
+```
+
+Cross-scope Azure resources are separated when required by Bicep or Azure
+deployment-scope semantics.
+
+The architecture favors:
+
+- deterministic names;
+- deterministic role-assignment IDs;
+- single-resource ownership;
+- explicit dependencies;
+- environment-specific configuration through `.bicepparam`.
+
+Implementation convenience must not weaken the Bicep/OpenTofu ownership
+boundary.
+
+---
+
+## 18. Environment model
+
+Supported environment values are:
+
+```text
+lab
+dev
+prod
+```
+
+Environment-specific platform resources include the environment in their
+names.
+
+Examples:
+
+```text
+rg-agflow-platform-lab
+rg-agflow-workspaces-lab
+
+vnet-agflow-lab
+
+nsg-agflow-control-lab
+nsg-agflow-workspaces-lab
+
+id-agflow-control-plane-lab
+id-agflow-workspace-provisioner-lab
+```
+
+Environment-specific configuration is stored in:
+
+```text
+infra/environments/{environment}/main.bicepparam
+```
+
+Initial network allocation:
+
+```text
+LAB    10.20.0.0/16
+
+DEV    10.21.0.0/16    provisional
+
+PROD   10.22.0.0/16    provisional
+```
+
+Network ranges must remain non-overlapping before VNet peering or other
+cross-environment routing is introduced.
+
+---
+
+## 19. Knowledge architecture
+
+The long-term platform architecture goes beyond a conventional document RAG.
+
+The target is an enterprise Knowledge Compiler / Knowledge Mesh model.
+
+Conceptually:
+
+```text
+Enterprise sources
+│
+├── Confluence
+├── SharePoint
+├── GitHub / Azure DevOps Git
+├── Azure DevOps Work Items
+├── Salesforce
+├── Snowflake / dbt
+├── Power BI
+└── other enterprise sources
+        │
+        ▼
+Domain Knowledge Compiler Workspaces
+        │
+        ├── curated Markdown / Wiki
+        ├── ontology
+        ├── provenance
+        ├── validation
+        └── human approval
+        │
+        ▼
+Enterprise Knowledge Product
+        │
+        ├── structured source
+        ├── vector projection
+        └── graph projection
+```
+
+Potential target projections include:
+
+```text
+PostgreSQL
+→ transactional / structured knowledge state
+
+Qdrant
+→ semantic retrieval projection
+
+Neo4j
+→ knowledge graph projection
+```
+
+These components are future architecture and are not part of the initial Azure
+infrastructure milestones.
+
+---
+
+## 20. Deployment sequence
+
+The platform is implemented incrementally.
+
+```text
+Milestone 1
+Resource Groups
+        │
+        ▼
+Milestone 2
+Networking
+        │
+        ▼
+Milestone 3
+Managed Identities + RBAC
+        │
+        ▼
+Milestone 4
+Shared Storage
+        │
+        ▼
+Milestone 5
+Control-plane VM
+        │
+        ▼
+Milestone 6
+Microsoft Foundry
+        │
+        ▼
+Milestone 7
+Private connectivity
+        │
+        ▼
+Milestone 8
+DevPod / OpenTofu integration
+        │
+        ▼
+Application deployment
+```
+
+Milestone ordering may evolve when a concrete dependency justifies it.
+
+Infrastructure ownership boundaries must remain stable.
+
+---
+
+## 21. Current architectural boundaries
+
+### Bicep owns
+
+```text
+Resource Groups
+VNet
+Subnets
+NSGs
+Managed Identities
+Custom Azure roles
+RBAC assignments
+Shared storage
+Control-plane VM
+Microsoft Foundry foundation
+Private networking
+Shared outbound infrastructure
+```
+
+### OpenTofu owns
+
+```text
+Workspace VM
+Workspace NIC
+Workspace disk
+Workspace creation
+Workspace destruction
+Workspace recreation
+```
+
+### Docker Compose owns
+
+```text
+Portal / devpod-ui
+Docflow
+RAG
+PostgreSQL
+Harpocrate
+MCP Manager
+Homepage
+Caddy
+application services
+```
+
+### Key rule
+
+```text
+one resource
+    │
+    ▼
+one owner
+```
+
+No Azure resource may be managed simultaneously by Bicep and OpenTofu.
+
+---
+
+## 22. Architecture Decision Records
+
+Current accepted decisions:
+
+- [ADR-0001 — Infrastructure ownership boundaries](adr/0001-iac-ownership-boundaries.md)
+- [ADR-0002 — Environment-aware Azure resource naming](adr/0002-environment-resource-naming.md)
+- [ADR-0003 — Shared network foundation and outbound connectivity](adr/0003-shared-network-foundation.md)
+- [ADR-0004 — Managed Identities and workspace provisioning RBAC](adr/0004-managed-identities-rbac.md)
+
+Future significant decisions should be captured as new ADRs when they affect:
+
+- outbound networking;
+- storage architecture;
+- control-plane compute;
+- Microsoft Foundry integration;
+- private connectivity;
+- application secrets;
+- DevPod/OpenTofu integration;
+- persistent application data;
+- major platform dependencies.
+
+Architecture documentation describes the resulting architecture.
+
+ADR files explain why significant architectural choices were made.
+
+Git history records how the implementation changed over time.

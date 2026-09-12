@@ -71,6 +71,10 @@ resource blobServices 'Microsoft.Storage/storageAccounts/blobServices@2026-04-01
     deleteRetentionPolicy: {
       enabled: true
       days: blobSoftDeleteRetentionDays
+      allowPermanentDelete: false
+    }
+    staticWebsite: {
+      enabled: false
     }
   }
 }

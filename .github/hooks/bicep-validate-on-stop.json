@@ -1,0 +1,12 @@
+{
+  "hooks": {
+    "Stop": [
+      {
+        "type": "command",
+        "command": "pwsh -NoProfile -ExecutionPolicy Bypass -File ./.github/hooks/scripts/validate-bicep-on-stop.ps1",
+        "windows": "powershell -NoProfile -ExecutionPolicy Bypass -File .github\\hooks\\scripts\\validate-bicep-on-stop.ps1",
+        "timeout": 60
+      }
+    ]
+  }
+}

@@ -259,6 +259,7 @@ The planned Azure network is:
 
 ```text
 vnet-agflow-lab                     10.20.0.0/16
+│   privateEndpointVNetPolicies=Disabled
 │
 ├── snet-control                    10.20.1.0/24
 │   ├── defaultOutboundAccess=false

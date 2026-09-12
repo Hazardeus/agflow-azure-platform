@@ -188,12 +188,13 @@
       "bases:Créer une nouvelle base": false
     }
   },
-  "active": "d79c8796defc0919",
+  "active": "8b37a485416c66f0",
   "lastOpenFiles": [
+    "adr/0003-shared-network-foundation.md",
+    "adr.md",
     "DEVELOPMENT.md",
     "STATUS.md",
     "ARCHITECTURE.md",
-    "adr/README.md",
-    "adr.md"
+    "adr/README.md"
   ]
 }

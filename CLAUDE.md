@@ -1,13 +1,7 @@
-# Claude Code Instructions
+@AGENTS.md
 
-The canonical repository instructions are in `AGENTS.md`.
+# Claude Code specific instructions
 
-Before making changes, read:
+Use subagents for large codebase exploration.
 
-- `AGENTS.md`
-- `docs/ARCHITECTURE.md`
-- `docs/STATUS.md`
-- `docs/DEVELOPMENT.md`
-- relevant ADRs under `docs/adr/`
-
-Respect all architecture, validation and documentation rules defined there.
+Never modify a branch or worktree currently owned by another agent.

@@ -21,13 +21,15 @@ For the development workflow, see [`DEVELOPMENT.md`](DEVELOPMENT.md).
 
 ## Current phase
 
-**Milestone 5 — Control-plane VM**
+**Milestone 6 — Microsoft Foundry**
 
 Status: **Completed**
 
 Milestones 1 (Resource Groups), 2 (shared network foundation), 3
-(Managed Identities and RBAC), 4 (Shared Storage), and 5 (Control-plane VM)
-are all implemented, deployed to LAB, and post-deployment verified.
+(Managed Identities and RBAC), 4 (Shared Storage), 5 (Control-plane VM),
+and 6 (Microsoft Foundry, including Codex, embeddings, and Claude model
+deployments) are all implemented, deployed to LAB, and post-deployment
+verified. Milestone 7 (Private networking) has not started.
 
 ---
 
@@ -244,10 +246,6 @@ Modify entries are the known `isolationScope` false positives on
 (already noted under Milestone 3), not actual drift. The Storage Account
 and `blobServices/default` reported no change.
 
----
-
-## Current milestone
-
 ### Milestone 5 — Control-plane VM
 
 Status: **Completed**
@@ -291,6 +289,107 @@ Post-deployment verification confirmed against live Azure and guest state:
 New module: `infra/modules/control-plane-compute.bicep`. Modified:
 `infra/modules/networking.bicep` (NSG rule only; the module remains the sole
 owner of `nsg-agflow-control-lab`).
+
+---
+
+### Milestone 6 — Microsoft Foundry
+
+Status: **Completed**
+
+Design accepted per [ADR-0008](adr/0008-microsoft-foundry-foundation-model-access.md)
+and [ADR-0009](adr/0009-foundry-project-managed-identity.md).
+
+**Phase 1 — Foundry foundation: deployed to LAB, post-deployment verified.**
+
+* `aif-agflow-lab-{uniqueString}` — `Microsoft.CognitiveServices/accounts`
+  (`kind: AIServices`, `sku: S0`), `identity: SystemAssigned` (required by
+  Foundry for `allowProjectManagement`; independent of the control-plane
+  UAMI, no RBAC granted to it), `disableLocalAuth: true`,
+  `publicNetworkAccess: Enabled` (temporary M6 posture, see ADR-0008);
+* `proj-agflow-lab` — one named `accounts/projects` child, `identity:
+  SystemAssigned` (ADR-0009, matches current Foundry project-creation
+  guidance; no RBAC granted to it);
+* RBAC: **Foundry User** (`53ca6127-db72-4b80-b1b0-d745d6d5456d`) granted to
+  the existing `id-agflow-control-plane-lab`, scoped to the Foundry account
+  only — no Contributor, no RG-level access, no new identity;
+* no model deployments yet.
+
+New module: `infra/modules/foundry.bicep`.
+
+Post-deployment verification confirmed against live Azure state:
+
+* the Foundry account and project match the reviewed `what-if` (`kind:
+  AIServices`, `sku: S0`, both `identity: SystemAssigned`,
+  `allowProjectManagement: true`, `disableLocalAuth: true`,
+  `publicNetworkAccess: Enabled`, `customSubDomainName` matches the
+  deterministic account name);
+* exactly one **Foundry User** role assignment exists, scoped to the
+  Foundry account only, principal `id-agflow-control-plane-lab` — no
+  RG-level or subscription-level assignment for this identity;
+* both Foundry `SystemAssigned` identities (account and project) carry
+  **zero** explicit role assignments each, confirming no speculative RBAC
+  was introduced;
+* zero `accounts/deployments` exist under the Foundry account — Phase 2
+  has not started;
+* a subsequent idempotence `what-if` reported 0 Create / 0 Delete / 0
+  Replace, with only known benign Azure-computed default/read-only
+  properties remaining as Modify (the previously documented UAMI
+  `isolationScope`/managed-disk/NIC/PIP noise, plus two new same-class
+  entries: the account's `associatedProjects`/`defaultProject`/`a365*`
+  fields and the project's `kind`/`endpoints`/`internalId`/`isDefault`
+  fields, all populated only once the resources actually exist).
+
+**Phase 2 — model deployments, split into sub-phases:**
+
+* **M6-B1 (Codex + embeddings): Complete.**
+  `mdl-codex-lab` (`gpt-5.3-codex`, version `2026-02-24`, `GlobalStandard`,
+  capacity `10`) and `mdl-embedding-lab` (`text-embedding-3-large`, version
+  `1`, `GlobalStandard`, capacity `120`) — both `NoAutoUpgrade`, capacities
+  are RP-provided defaults (Azure exposes no minimum/step for either
+  model). Both confirmed `provisioningState: Succeeded` /
+  `deploymentState: Running` against live Azure state; the Foundry
+  account's RBAC remains exactly the one existing **Foundry User**
+  assignment — no RBAC, networking, or identity changes beyond the two
+  child `accounts/deployments` resources. Sibling deployments are now
+  serialized in Bicep (`embeddingDeployment` explicitly `dependsOn`
+  `codexDeployment`) after the initial deployment surfaced a transient
+  Cognitive Services RP sibling-resource concurrency conflict
+  (`RequestConflict`); a subsequent idempotence `what-if` reported
+  0 Create / 0 Delete / 0 Replace, with only known benign Azure-computed
+  properties remaining as Modify. Managed-Identity inference smoke tests
+  passed from `vm-agflow-control-lab`, explicitly using
+  `id-agflow-control-plane-lab` (never the workspace-provisioner identity),
+  no API keys: Codex Responses API returned a valid completion (HTTP 200);
+  embeddings returned a 3072-dimension vector (HTTP 200, after Azure's
+  documented data-plane propagation delay following deployment).
+* **M6-B2 (Claude): Complete.**
+  `mdl-claude-lab` (`Anthropic`/`claude-haiku-4-5`/version `2`,
+  Azure-hosted, `GlobalStandard`, capacity `10` — RP-provided default,
+  `NoAutoUpgrade`), serialized in Bicep after `embeddingDeployment`. Uses
+  `properties: any({...})` to carry `modelProviderData`
+  (`organizationName`/`countryCode`/`industry`, operator-supplied via
+  environment variables, never committed), a confirmed Microsoft spec
+  gap: the RP requires this block for Claude but it is absent from the
+  typed `2026-05-01` schema; the stable API was kept (no preview switch).
+  Both required human gates were satisfied before deployment: the
+  operator confirmed successful interactive Claude access in the same
+  Foundry environment/subscription (Marketplace/commercial acceptance),
+  and the three attestation environment variables were supplied.
+  Deployed and confirmed `provisioningState: Succeeded` /
+  `deploymentState: Running` against live Azure state; RBAC remains
+  exactly the one existing **Foundry User** assignment; `mdl-codex-lab`
+  and `mdl-embedding-lab` unchanged. A subsequent idempotence `what-if`
+  reported 0 Create / 0 Delete / 0 Replace, only known benign
+  Azure-computed properties as Modify. Managed-Identity smoke test
+  passed from `vm-agflow-control-lab`, explicitly using
+  `id-agflow-control-plane-lab`, no API keys: the Claude Messages API
+  (`https://aif-agflow-lab-56xw4a7zc653a.services.ai.azure.com/anthropic/v1/messages`,
+  `anthropic-version: 2023-06-01`) returned a valid, non-empty response
+  (HTTP 200) on the first attempt.
+
+All three M6 model categories (Codex, embeddings, Claude) are deployed to
+LAB and Managed-Identity inference smoke tests have passed for each,
+satisfying the Milestone 6 completion criterion.
 
 ---
 
@@ -398,7 +497,6 @@ OpenTofu must consume existing shared infrastructure rather than recreate it.
 
 The following components have intentionally not been implemented yet:
 
-* Microsoft Foundry resources;
 * Private Endpoints;
 * Private DNS;
 * DevPod/OpenTofu Azure integration;

@@ -29,3 +29,16 @@ param dataDiskSku = 'StandardSSD_LRS'
 param dataDiskSizeGiB = 128
 param dataDiskCaching = 'None'
 
+// M6-B1: RP-provided defaults — Azure exposes no minimum/step for these models' capacity.
+param codexDeploymentCapacity = 10
+param embeddingDeploymentCapacity = 120
+
+// M6-B2: RP-provided default capacity for the Azure-hosted Claude Haiku 4.5 deployment.
+param claudeDeploymentCapacity = 10
+
+// M6-B2: Anthropic model-provider attestation — real operator-supplied values, never fabricated/committed.
+// Set these env vars before running build-params/what-if/deployment for the Claude deployment.
+param claudeOrganizationName = readEnvironmentVariable('AGFLOW_CLAUDE_ORGANIZATION_NAME')
+param claudeCountryCode = readEnvironmentVariable('AGFLOW_CLAUDE_COUNTRY_CODE')
+param claudeIndustry = readEnvironmentVariable('AGFLOW_CLAUDE_INDUSTRY')
+

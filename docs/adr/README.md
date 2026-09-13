@@ -26,3 +26,5 @@ A new ADR should supersede the previous one.
 | [ADR-0005](0005-shared-storage-foundation.md) | Shared Storage Foundation | Accepted |
 | [ADR-0006](0006-control-plane-compute-persistence-lab-egress.md) | Control-plane Compute, Persistence and LAB Egress | Accepted |
 | [ADR-0007](0007-lab-control-plane-vm-sizing-adjustment.md) | LAB Control-plane VM Sizing Adjustment (partially supersedes ADR-0006 LAB VM size only) | Accepted |
+| [ADR-0008](0008-microsoft-foundry-foundation-model-access.md) | Microsoft Foundry Foundation and Model Access | Accepted |
+| [ADR-0009](0009-foundry-project-managed-identity.md) | Foundry Project Managed Identity (partially supersedes ADR-0008 project identity only) | Accepted |

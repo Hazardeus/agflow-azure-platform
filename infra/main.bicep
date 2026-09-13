@@ -90,6 +90,24 @@ param dataDiskSizeGiB int
 ])
 param dataDiskCaching string
 
+@description('gpt-5.3-codex GlobalStandard deployment capacity (RP-provided default; no minimum/step exposed by Azure). Environment-specific, no default.')
+param codexDeploymentCapacity int
+
+@description('text-embedding-3-large GlobalStandard deployment capacity (RP-provided default; no minimum/step exposed by Azure). Environment-specific, no default.')
+param embeddingDeploymentCapacity int
+
+@description('claude-haiku-4-5 (Azure-hosted, v2) GlobalStandard deployment capacity (RP-provided default; no minimum/step exposed by Azure). Environment-specific, no default.')
+param claudeDeploymentCapacity int
+
+@description('Anthropic model-provider attestation: real legal entity name using Claude. Operator-supplied, no default, never fabricated.')
+param claudeOrganizationName string
+
+@description('Anthropic model-provider attestation: two-letter country code. Operator-supplied, no default, never fabricated.')
+param claudeCountryCode string
+
+@description('Anthropic model-provider attestation: organization industry. Operator-supplied, no default, never fabricated.')
+param claudeIndustry string
+
 var solutionName = 'agflow'
 
 // Mirrors the naming formula in modules/resource-groups.bicep (ADR-0002).
@@ -179,6 +197,28 @@ module storage 'modules/storage.bicep' = {
   ]
 }
 
+// ADR-0008: Foundry account + project foundation; Foundry User RBAC for the existing control-plane UAMI only.
+// M6-B1: OpenAI Direct-from-Azure model deployments (Codex, embeddings) owned by the same module.
+module foundry 'modules/foundry.bicep' = {
+  name: 'foundry-${environmentName}'
+  scope: resourceGroup(platformResourceGroupName)
+  params: {
+    location: location
+    environmentName: environmentName
+    solutionName: solutionName
+    controlPlaneIdentityPrincipalId: identities.outputs.controlPlaneIdentityPrincipalId
+    codexDeploymentCapacity: codexDeploymentCapacity
+    embeddingDeploymentCapacity: embeddingDeploymentCapacity
+    claudeDeploymentCapacity: claudeDeploymentCapacity
+    claudeOrganizationName: claudeOrganizationName
+    claudeCountryCode: claudeCountryCode
+    claudeIndustry: claudeIndustry
+  }
+  dependsOn: [
+    resourceGroups
+  ]
+}
+
 // ADR-0006: control-plane compute, LAB Public IP egress, durable data disk; both UAMIs attached, no new RBAC.
 module controlPlaneCompute 'modules/control-plane-compute.bicep' = {
   name: 'control-plane-compute-${environmentName}'
@@ -227,3 +267,11 @@ output controlPlaneNicId string = controlPlaneCompute.outputs.controlPlaneNicId
 output controlPlanePrivateIp string = controlPlaneCompute.outputs.controlPlanePrivateIp
 output controlPlanePublicIpId string = controlPlaneCompute.outputs.controlPlanePublicIpId
 output controlPlaneDataDiskId string = controlPlaneCompute.outputs.controlPlaneDataDiskId
+output foundryAccountId string = foundry.outputs.foundryAccountId
+output foundryAccountName string = foundry.outputs.foundryAccountName
+output foundryAccountEndpoint string = foundry.outputs.foundryAccountEndpoint
+output foundryProjectId string = foundry.outputs.foundryProjectId
+output foundryProjectName string = foundry.outputs.foundryProjectName
+output codexDeploymentName string = foundry.outputs.codexDeploymentName
+output embeddingDeploymentName string = foundry.outputs.embeddingDeploymentName
+output claudeDeploymentName string = foundry.outputs.claudeDeploymentName

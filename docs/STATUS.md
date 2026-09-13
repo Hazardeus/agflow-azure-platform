@@ -28,8 +28,9 @@ Status: **In progress**
 Milestones 1 (Resource Groups), 2 (shared network foundation), 3
 (Managed Identities and RBAC), 4 (Shared Storage), and 5 (Control-plane VM)
 are all implemented, deployed to LAB, and post-deployment verified.
-Milestone 6 Phase 1 (Foundry account/project foundation) is implemented
-but not yet deployed.
+Milestone 6 Phase 1 (Foundry account/project foundation) is deployed to
+LAB and post-deployment verified; Phase 2 (model deployments) has not
+started.
 
 ---
 
@@ -301,7 +302,7 @@ Status: **In progress**
 Design accepted per [ADR-0008](adr/0008-microsoft-foundry-foundation-model-access.md)
 and [ADR-0009](adr/0009-foundry-project-managed-identity.md).
 
-**Phase 1 — Foundry foundation: implemented, not yet deployed.**
+**Phase 1 — Foundry foundation: deployed to LAB, post-deployment verified.**
 
 * `aif-agflow-lab-{uniqueString}` — `Microsoft.CognitiveServices/accounts`
   (`kind: AIServices`, `sku: S0`), `identity: SystemAssigned` (required by
@@ -318,14 +319,34 @@ and [ADR-0009](adr/0009-foundry-project-managed-identity.md).
 
 New module: `infra/modules/foundry.bicep`.
 
+Post-deployment verification confirmed against live Azure state:
+
+* the Foundry account and project match the reviewed `what-if` (`kind:
+  AIServices`, `sku: S0`, both `identity: SystemAssigned`,
+  `allowProjectManagement: true`, `disableLocalAuth: true`,
+  `publicNetworkAccess: Enabled`, `customSubDomainName` matches the
+  deterministic account name);
+* exactly one **Foundry User** role assignment exists, scoped to the
+  Foundry account only, principal `id-agflow-control-plane-lab` — no
+  RG-level or subscription-level assignment for this identity;
+* both Foundry `SystemAssigned` identities (account and project) carry
+  **zero** explicit role assignments each, confirming no speculative RBAC
+  was introduced;
+* zero `accounts/deployments` exist under the Foundry account — Phase 2
+  has not started;
+* a subsequent idempotence `what-if` reported 0 Create / 0 Delete / 0
+  Replace, with only known benign Azure-computed default/read-only
+  properties remaining as Modify (the previously documented UAMI
+  `isolationScope`/managed-disk/NIC/PIP noise, plus two new same-class
+  entries: the account's `associatedProjects`/`defaultProject`/`a365*`
+  fields and the project's `kind`/`endpoints`/`internalId`/`isDefault`
+  fields, all populated only once the resources actually exist).
+
 **Phase 2 (not started):** version-pinned model deployments
 (`claude-haiku-4-5` v2, `gpt-5.3-codex` 2026-02-24, `text-embedding-3-large`
 v1) and Entra/Managed-Identity inference smoke tests. Requires manual
 Anthropic/Marketplace commercial-terms acceptance before the Claude
 deployment specifically.
-
-Not yet done for Phase 1: Bicep lint/build/build-params validation, `what-if`
-review, deployment, and post-deployment verification.
 
 ---
 

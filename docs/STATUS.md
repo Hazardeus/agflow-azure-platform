@@ -30,7 +30,9 @@ Milestones 1 (Resource Groups), 2 (shared network foundation), 3
 are all implemented, deployed to LAB, and post-deployment verified.
 Milestone 6 Phase 1 (Foundry account/project foundation) and Phase 2
 M6-B1 (Codex + embeddings model deployments) are deployed to LAB and
-post-deployment verified; M6-B2 (Claude) has not started.
+post-deployment verified; M6-B2 (Claude) is implemented in Bicep but not
+deployed, pending Marketplace acceptance confirmation and operator-supplied
+attestation values.
 
 ---
 
@@ -365,9 +367,28 @@ Post-deployment verification confirmed against live Azure state:
   no API keys: Codex Responses API returned a valid completion (HTTP 200);
   embeddings returned a 3072-dimension vector (HTTP 200, after Azure's
   documented data-plane propagation delay following deployment).
-* **M6-B2 (Claude): not started.** Requires a human-performed
-  Marketplace/Anthropic commercial-terms acceptance before the Claude
-  deployment specifically; not automated.
+* **M6-B2 (Claude): implementation prepared, not yet deployed.**
+  `mdl-claude-lab` (`Anthropic`/`claude-haiku-4-5`/version `2`,
+  Azure-hosted, `GlobalStandard`, capacity `10` — RP-provided default,
+  `NoAutoUpgrade`), serialized in Bicep after `embeddingDeployment`. Uses
+  `properties: any({...})` to carry `modelProviderData`
+  (`organizationName`/`countryCode`/`industry`), a confirmed Microsoft
+  spec gap: the RP requires this block for Claude but it is absent from
+  the typed `2026-05-01` schema; the stable API is kept (no preview
+  switch). Two outstanding human gates block deployment:
+  1. Marketplace acceptance of the "Claude Platform on Foundry" /
+     Claude Haiku 4.5 offer could not be confirmed read-only — the
+     Marketplace Catalog API requires a Partner Center API key beyond
+     what this automation holds, so the exact offer plan ID and
+     acceptance state remain unverified.
+  2. The three operator-supplied attestation environment variables
+     (`AGFLOW_CLAUDE_ORGANIZATION_NAME`, `AGFLOW_CLAUDE_COUNTRY_CODE`,
+     `AGFLOW_CLAUDE_INDUSTRY`) are not set; no fabricated values were
+     used. `az bicep build-params` fails on exactly these three
+     (`BCP427`) until they are supplied.
+
+  `lint`/`build` of `infra/main.bicep` pass; `build-params`/`what-if` for
+  Claude are gated on the two items above and have not been run.
 
 ---
 

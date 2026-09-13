@@ -33,3 +33,12 @@ param dataDiskCaching = 'None'
 param codexDeploymentCapacity = 10
 param embeddingDeploymentCapacity = 120
 
+// M6-B2: RP-provided default capacity for the Azure-hosted Claude Haiku 4.5 deployment.
+param claudeDeploymentCapacity = 10
+
+// M6-B2: Anthropic model-provider attestation — real operator-supplied values, never fabricated/committed.
+// Set these env vars before running build-params/what-if/deployment for the Claude deployment.
+param claudeOrganizationName = readEnvironmentVariable('AGFLOW_CLAUDE_ORGANIZATION_NAME')
+param claudeCountryCode = readEnvironmentVariable('AGFLOW_CLAUDE_COUNTRY_CODE')
+param claudeIndustry = readEnvironmentVariable('AGFLOW_CLAUDE_INDUSTRY')
+

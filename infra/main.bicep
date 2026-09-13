@@ -96,6 +96,18 @@ param codexDeploymentCapacity int
 @description('text-embedding-3-large GlobalStandard deployment capacity (RP-provided default; no minimum/step exposed by Azure). Environment-specific, no default.')
 param embeddingDeploymentCapacity int
 
+@description('claude-haiku-4-5 (Azure-hosted, v2) GlobalStandard deployment capacity (RP-provided default; no minimum/step exposed by Azure). Environment-specific, no default.')
+param claudeDeploymentCapacity int
+
+@description('Anthropic model-provider attestation: real legal entity name using Claude. Operator-supplied, no default, never fabricated.')
+param claudeOrganizationName string
+
+@description('Anthropic model-provider attestation: two-letter country code. Operator-supplied, no default, never fabricated.')
+param claudeCountryCode string
+
+@description('Anthropic model-provider attestation: organization industry. Operator-supplied, no default, never fabricated.')
+param claudeIndustry string
+
 var solutionName = 'agflow'
 
 // Mirrors the naming formula in modules/resource-groups.bicep (ADR-0002).
@@ -197,6 +209,10 @@ module foundry 'modules/foundry.bicep' = {
     controlPlaneIdentityPrincipalId: identities.outputs.controlPlaneIdentityPrincipalId
     codexDeploymentCapacity: codexDeploymentCapacity
     embeddingDeploymentCapacity: embeddingDeploymentCapacity
+    claudeDeploymentCapacity: claudeDeploymentCapacity
+    claudeOrganizationName: claudeOrganizationName
+    claudeCountryCode: claudeCountryCode
+    claudeIndustry: claudeIndustry
   }
   dependsOn: [
     resourceGroups
@@ -258,3 +274,4 @@ output foundryProjectId string = foundry.outputs.foundryProjectId
 output foundryProjectName string = foundry.outputs.foundryProjectName
 output codexDeploymentName string = foundry.outputs.codexDeploymentName
 output embeddingDeploymentName string = foundry.outputs.embeddingDeploymentName
+output claudeDeploymentName string = foundry.outputs.claudeDeploymentName

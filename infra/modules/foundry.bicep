@@ -18,6 +18,18 @@ param codexDeploymentCapacity int
 @description('text-embedding-3-large GlobalStandard deployment capacity (RP-provided default; no minimum/step exposed by Azure). Environment-specific, no default.')
 param embeddingDeploymentCapacity int
 
+@description('claude-haiku-4-5 (Azure-hosted, v2) GlobalStandard deployment capacity (RP-provided default; no minimum/step exposed by Azure). Environment-specific, no default.')
+param claudeDeploymentCapacity int
+
+@description('Anthropic model-provider attestation: real legal entity name using Claude. Operator-supplied, no default, never fabricated.')
+param claudeOrganizationName string
+
+@description('Anthropic model-provider attestation: two-letter country code. Operator-supplied, no default, never fabricated.')
+param claudeCountryCode string
+
+@description('Anthropic model-provider attestation: organization industry. Operator-supplied, no default, never fabricated.')
+param claudeIndustry string
+
 var commonTags = {
   solution: solutionName
   environment: environmentName
@@ -35,6 +47,8 @@ var foundryUserRoleDefinitionId = '53ca6127-db72-4b80-b1b0-d745d6d5456d'
 // M6-B1: stable, environment-aware deployment names, independent of the pinned model version.
 var codexDeploymentName = 'mdl-codex-${environmentName}'
 var embeddingDeploymentName = 'mdl-embedding-${environmentName}'
+// M6-B2: same naming pattern for the Claude deployment.
+var claudeDeploymentName = 'mdl-claude-${environmentName}'
 
 // ADR-0008: SystemAssigned identity is required by Foundry for project management (allowProjectManagement);
 // it is independent of, and does not replace, the control-plane UAMI. No RBAC is granted to it.
@@ -135,3 +149,34 @@ resource embeddingDeployment 'Microsoft.CognitiveServices/accounts/deployments@2
 
 output codexDeploymentName string = codexDeployment.name
 output embeddingDeploymentName string = embeddingDeployment.name
+
+// M6-B2: Anthropic Claude deployment. `modelProviderData` (organizationName/countryCode/industry) is a
+// confirmed Microsoft spec gap: the RP requires it for Claude but the typed 2026-05-01 schema does not
+// expose it, so it is passed via `any()` — verified compile-only, not yet runtime-tested. Serialized
+// after embeddingDeployment because the RP rejects concurrent sibling writes with RequestConflict.
+resource claudeDeployment 'Microsoft.CognitiveServices/accounts/deployments@2026-05-01' = {
+  parent: foundryAccount
+  name: claudeDeploymentName
+  sku: {
+    name: 'GlobalStandard'
+    capacity: claudeDeploymentCapacity
+  }
+  properties: any({
+    model: {
+      format: 'Anthropic'
+      name: 'claude-haiku-4-5'
+      version: '2'
+    }
+    modelProviderData: {
+      organizationName: claudeOrganizationName
+      countryCode: claudeCountryCode
+      industry: claudeIndustry
+    }
+    versionUpgradeOption: 'NoAutoUpgrade'
+  })
+  dependsOn: [
+    embeddingDeployment
+  ]
+}
+
+output claudeDeploymentName string = claudeDeployment.name

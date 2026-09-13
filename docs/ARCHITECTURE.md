@@ -312,21 +312,24 @@ Keeping this subnet separate avoids later restructuring when private connectivit
 
 ## 7. Control-plane compute
 
-Implemented for LAB per [ADR-0006](adr/0006-control-plane-compute-persistence-lab-egress.md):
+Implemented for LAB per [ADR-0006](adr/0006-control-plane-compute-persistence-lab-egress.md)
+and [ADR-0007](adr/0007-lab-control-plane-vm-sizing-adjustment.md):
 
 ```text
 Ubuntu 24.04 LTS Gen2
-Standard_D4as_v5
-4 vCPU
-16 GiB RAM
+Standard_D2as_v5
+2 vCPU
+8 GiB RAM
 Spot (LAB only), eviction policy: Deallocate
 Trusted Launch, Secure Boot, vTPM
 ```
 
-VM size, priority, eviction policy, and Spot max price are environment
-parameters, not hardcoded platform assumptions. Spot is a LAB cost
-optimization; "stable control plane" refers to durable identity, networking,
-and disk state, not guaranteed compute uptime.
+`Standard_D2as_v5` is the current LAB size, fitted to the subscription's
+Sweden Central `LowPriorityCores` Spot quota; it is not a production sizing
+recommendation. VM size, priority, eviction policy, and Spot max price are
+environment parameters, not hardcoded platform assumptions. Spot is a LAB
+cost optimization; "stable control plane" refers to durable identity,
+networking, and disk state, not guaranteed compute uptime.
 
 The initial strategy avoids AKS until operational requirements justify Kubernetes.
 

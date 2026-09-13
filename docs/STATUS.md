@@ -21,13 +21,15 @@ For the development workflow, see [`DEVELOPMENT.md`](DEVELOPMENT.md).
 
 ## Current phase
 
-**Milestone 5 — Control-plane VM**
+**Milestone 6 — Microsoft Foundry**
 
-Status: **Completed**
+Status: **In progress**
 
 Milestones 1 (Resource Groups), 2 (shared network foundation), 3
 (Managed Identities and RBAC), 4 (Shared Storage), and 5 (Control-plane VM)
 are all implemented, deployed to LAB, and post-deployment verified.
+Milestone 6 Phase 1 (Foundry account/project foundation) is implemented
+but not yet deployed.
 
 ---
 
@@ -244,10 +246,6 @@ Modify entries are the known `isolationScope` false positives on
 (already noted under Milestone 3), not actual drift. The Storage Account
 and `blobServices/default` reported no change.
 
----
-
-## Current milestone
-
 ### Milestone 5 — Control-plane VM
 
 Status: **Completed**
@@ -291,6 +289,41 @@ Post-deployment verification confirmed against live Azure and guest state:
 New module: `infra/modules/control-plane-compute.bicep`. Modified:
 `infra/modules/networking.bicep` (NSG rule only; the module remains the sole
 owner of `nsg-agflow-control-lab`).
+
+---
+
+## Current milestone
+
+### Milestone 6 — Microsoft Foundry
+
+Status: **In progress**
+
+Design accepted per [ADR-0008](adr/0008-microsoft-foundry-foundation-model-access.md).
+
+**Phase 1 — Foundry foundation: implemented, not yet deployed.**
+
+* `aif-agflow-lab-{uniqueString}` — `Microsoft.CognitiveServices/accounts`
+  (`kind: AIServices`, `sku: S0`), `identity: SystemAssigned` (required by
+  Foundry for `allowProjectManagement`; independent of the control-plane
+  UAMI, no RBAC granted to it), `disableLocalAuth: true`,
+  `publicNetworkAccess: Enabled` (temporary M6 posture, see ADR-0008);
+* `proj-agflow-lab` — one named `accounts/projects` child, no project-level
+  identity;
+* RBAC: **Foundry User** (`53ca6127-db72-4b80-b1b0-d745d6d5456d`) granted to
+  the existing `id-agflow-control-plane-lab`, scoped to the Foundry account
+  only — no Contributor, no RG-level access, no new identity;
+* no model deployments yet.
+
+New module: `infra/modules/foundry.bicep`.
+
+**Phase 2 (not started):** version-pinned model deployments
+(`claude-haiku-4-5` v2, `gpt-5.3-codex` 2026-02-24, `text-embedding-3-large`
+v1) and Entra/Managed-Identity inference smoke tests. Requires manual
+Anthropic/Marketplace commercial-terms acceptance before the Claude
+deployment specifically.
+
+Not yet done for Phase 1: Bicep lint/build/build-params validation, `what-if`
+review, deployment, and post-deployment verification.
 
 ---
 
@@ -398,7 +431,7 @@ OpenTofu must consume existing shared infrastructure rather than recreate it.
 
 The following components have intentionally not been implemented yet:
 
-* Microsoft Foundry resources;
+* Microsoft Foundry model deployments (Milestone 6 Phase 2);
 * Private Endpoints;
 * Private DNS;
 * DevPod/OpenTofu Azure integration;

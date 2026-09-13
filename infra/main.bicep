@@ -179,6 +179,21 @@ module storage 'modules/storage.bicep' = {
   ]
 }
 
+// ADR-0008: Foundry account + project foundation; Foundry User RBAC for the existing control-plane UAMI only.
+module foundry 'modules/foundry.bicep' = {
+  name: 'foundry-${environmentName}'
+  scope: resourceGroup(platformResourceGroupName)
+  params: {
+    location: location
+    environmentName: environmentName
+    solutionName: solutionName
+    controlPlaneIdentityPrincipalId: identities.outputs.controlPlaneIdentityPrincipalId
+  }
+  dependsOn: [
+    resourceGroups
+  ]
+}
+
 // ADR-0006: control-plane compute, LAB Public IP egress, durable data disk; both UAMIs attached, no new RBAC.
 module controlPlaneCompute 'modules/control-plane-compute.bicep' = {
   name: 'control-plane-compute-${environmentName}'
@@ -227,3 +242,8 @@ output controlPlaneNicId string = controlPlaneCompute.outputs.controlPlaneNicId
 output controlPlanePrivateIp string = controlPlaneCompute.outputs.controlPlanePrivateIp
 output controlPlanePublicIpId string = controlPlaneCompute.outputs.controlPlanePublicIpId
 output controlPlaneDataDiskId string = controlPlaneCompute.outputs.controlPlaneDataDiskId
+output foundryAccountId string = foundry.outputs.foundryAccountId
+output foundryAccountName string = foundry.outputs.foundryAccountName
+output foundryAccountEndpoint string = foundry.outputs.foundryAccountEndpoint
+output foundryProjectId string = foundry.outputs.foundryProjectId
+output foundryProjectName string = foundry.outputs.foundryProjectName

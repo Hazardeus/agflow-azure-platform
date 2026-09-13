@@ -556,16 +556,38 @@ Skills should not automatically be converted into MCP resources unless there is 
 
 ## 12. Microsoft Foundry
 
-Microsoft Foundry is intended to centralize model access.
+Microsoft Foundry centralizes model access. Foundation implemented in
+Milestone 6 Phase 1, per [ADR-0008](adr/0008-microsoft-foundry-foundation-model-access.md);
+not yet deployed.
 
-Target model categories include:
+```text
+rg-agflow-platform-{environment}
+│
+└── aif-agflow-{environment}-{uniqueString}   Microsoft.CognitiveServices/accounts, kind=AIServices
+    │
+    └── proj-agflow-{environment}             accounts/projects
+```
+
+Account configuration:
+
+* `identity: SystemAssigned` — required by Foundry for `allowProjectManagement`;
+  independent of `id-agflow-control-plane-{environment}`, no RBAC granted to it;
+* `allowProjectManagement: true`;
+* `disableLocalAuth: true` — no API keys;
+* `publicNetworkAccess: Enabled` — temporary M6 posture; Private Endpoint/DNS
+  migration is Milestone 7 scope.
+
+One project per environment; no project-level identity until a concrete need
+exists.
+
+Target model categories (Phase 2, not yet implemented):
 
 ```text
 Microsoft Foundry
 │
-├── Claude
-├── Codex / Azure OpenAI compatible models
-└── Embeddings
+├── Claude          (claude-haiku-4-5, v2, Azure-hosted)
+├── Codex / Azure OpenAI compatible models   (gpt-5.3-codex)
+└── Embeddings      (text-embedding-3-large)
 ```
 
 Foundry may be consumed by:
@@ -577,9 +599,11 @@ Foundry may be consumed by:
 * RAG embeddings;
 * future Knowledge Compiler agents.
 
-Exact models, SKUs, quotas, API versions, and availability must be verified at implementation time rather than hardcoded into architecture documentation.
+Model deployments are version-pinned Bicep resources (Phase 2); Claude
+deployment requires a manual, human-performed Anthropic/Marketplace
+commercial-terms acceptance that is never automated.
 
-Where supported, Managed Identity / Entra authentication should be preferred over static API keys.
+Managed Identity / Entra authentication is used instead of static API keys.
 
 ---
 
@@ -656,22 +680,22 @@ id-agflow-control-plane-{environment}
 
 represents the future control-plane workload.
 
-Milestone 3 intentionally grants it:
+Milestone 3 intentionally granted it no RBAC. Permissions are introduced only
+when a concrete consumer exists. Milestone 6 Phase 1 introduced the first such
+permission:
 
 ```text
-RBAC: none
+id-agflow-control-plane-lab
+│
+└── Foundry User
+       │
+       └── scope:
+           aif-agflow-lab-{uniqueString}
 ```
 
-Permissions are introduced only by later milestones when a concrete consumer
-exists.
-
-Examples may eventually include:
-
-- Azure Storage;
-- Microsoft Foundry;
-- other Azure-native services.
-
-No permission is granted speculatively.
+See [ADR-0008](adr/0008-microsoft-foundry-foundation-model-access.md). No
+other permission has been granted; Azure Storage and other Azure-native
+services remain future candidates, added only when a concrete need exists.
 
 ### Workspace provisioner identity
 

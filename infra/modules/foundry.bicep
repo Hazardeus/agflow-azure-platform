@@ -127,6 +127,10 @@ resource embeddingDeployment 'Microsoft.CognitiveServices/accounts/deployments@2
     }
     versionUpgradeOption: 'NoAutoUpgrade'
   }
+  // Serialize sibling deployments — the RP rejects concurrent writes to the same account with RequestConflict.
+  dependsOn: [
+    codexDeployment
+  ]
 }
 
 output codexDeploymentName string = codexDeployment.name

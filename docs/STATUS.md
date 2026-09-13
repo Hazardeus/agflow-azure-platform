@@ -344,7 +344,7 @@ Post-deployment verification confirmed against live Azure state:
 
 **Phase 2 — model deployments, split into sub-phases:**
 
-* **M6-B1 (Codex + embeddings): deployed to LAB, post-deployment verified.**
+* **M6-B1 (Codex + embeddings): Complete.**
   `mdl-codex-lab` (`gpt-5.3-codex`, version `2026-02-24`, `GlobalStandard`,
   capacity `10`) and `mdl-embedding-lab` (`text-embedding-3-large`, version
   `1`, `GlobalStandard`, capacity `120`) — both `NoAutoUpgrade`, capacities
@@ -353,10 +353,18 @@ Post-deployment verification confirmed against live Azure state:
   `deploymentState: Running` against live Azure state; the Foundry
   account's RBAC remains exactly the one existing **Foundry User**
   assignment — no RBAC, networking, or identity changes beyond the two
-  child `accounts/deployments` resources. A subsequent idempotence
-  `what-if` reported 0 Create / 0 Delete / 0 Replace, with only known
-  benign Azure-computed properties remaining as Modify. Inference smoke
-  tests not yet run.
+  child `accounts/deployments` resources. Sibling deployments are now
+  serialized in Bicep (`embeddingDeployment` explicitly `dependsOn`
+  `codexDeployment`) after the initial deployment surfaced a transient
+  Cognitive Services RP sibling-resource concurrency conflict
+  (`RequestConflict`); a subsequent idempotence `what-if` reported
+  0 Create / 0 Delete / 0 Replace, with only known benign Azure-computed
+  properties remaining as Modify. Managed-Identity inference smoke tests
+  passed from `vm-agflow-control-lab`, explicitly using
+  `id-agflow-control-plane-lab` (never the workspace-provisioner identity),
+  no API keys: Codex Responses API returned a valid completion (HTTP 200);
+  embeddings returned a 3072-dimension vector (HTTP 200, after Azure's
+  documented data-plane propagation delay following deployment).
 * **M6-B2 (Claude): not started.** Requires a human-performed
   Marketplace/Anthropic commercial-terms acceptance before the Claude
   deployment specifically; not automated.

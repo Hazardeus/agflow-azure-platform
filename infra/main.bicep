@@ -90,6 +90,12 @@ param dataDiskSizeGiB int
 ])
 param dataDiskCaching string
 
+@description('gpt-5.3-codex GlobalStandard deployment capacity (RP-provided default; no minimum/step exposed by Azure). Environment-specific, no default.')
+param codexDeploymentCapacity int
+
+@description('text-embedding-3-large GlobalStandard deployment capacity (RP-provided default; no minimum/step exposed by Azure). Environment-specific, no default.')
+param embeddingDeploymentCapacity int
+
 var solutionName = 'agflow'
 
 // Mirrors the naming formula in modules/resource-groups.bicep (ADR-0002).
@@ -180,6 +186,7 @@ module storage 'modules/storage.bicep' = {
 }
 
 // ADR-0008: Foundry account + project foundation; Foundry User RBAC for the existing control-plane UAMI only.
+// M6-B1: OpenAI Direct-from-Azure model deployments (Codex, embeddings) owned by the same module.
 module foundry 'modules/foundry.bicep' = {
   name: 'foundry-${environmentName}'
   scope: resourceGroup(platformResourceGroupName)
@@ -188,6 +195,8 @@ module foundry 'modules/foundry.bicep' = {
     environmentName: environmentName
     solutionName: solutionName
     controlPlaneIdentityPrincipalId: identities.outputs.controlPlaneIdentityPrincipalId
+    codexDeploymentCapacity: codexDeploymentCapacity
+    embeddingDeploymentCapacity: embeddingDeploymentCapacity
   }
   dependsOn: [
     resourceGroups
@@ -247,3 +256,5 @@ output foundryAccountName string = foundry.outputs.foundryAccountName
 output foundryAccountEndpoint string = foundry.outputs.foundryAccountEndpoint
 output foundryProjectId string = foundry.outputs.foundryProjectId
 output foundryProjectName string = foundry.outputs.foundryProjectName
+output codexDeploymentName string = foundry.outputs.codexDeploymentName
+output embeddingDeploymentName string = foundry.outputs.embeddingDeploymentName

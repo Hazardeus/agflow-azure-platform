@@ -342,11 +342,20 @@ Post-deployment verification confirmed against live Azure state:
   fields and the project's `kind`/`endpoints`/`internalId`/`isDefault`
   fields, all populated only once the resources actually exist).
 
-**Phase 2 (not started):** version-pinned model deployments
-(`claude-haiku-4-5` v2, `gpt-5.3-codex` 2026-02-24, `text-embedding-3-large`
-v1) and Entra/Managed-Identity inference smoke tests. Requires manual
-Anthropic/Marketplace commercial-terms acceptance before the Claude
-deployment specifically.
+**Phase 2 — model deployments, split into sub-phases:**
+
+* **M6-B1 (Codex + embeddings): Bicep implemented, not yet deployed.**
+  `mdl-codex-lab` (`gpt-5.3-codex`, version `2026-02-24`, `GlobalStandard`,
+  capacity `10`) and `mdl-embedding-lab` (`text-embedding-3-large`, version
+  `1`, `GlobalStandard`, capacity `120`) — both `NoAutoUpgrade`, capacities
+  are RP-provided defaults (Azure exposes no minimum/step for either
+  model). No RBAC, networking, or identity changes beyond the two child
+  `accounts/deployments` resources.
+* **M6-B2 (Claude): not started.** Requires a human-performed
+  Marketplace/Anthropic commercial-terms acceptance before the Claude
+  deployment specifically; not automated.
+* Entra/Managed-Identity inference smoke tests remain for after deployment
+  of each sub-phase.
 
 ---
 
@@ -454,7 +463,7 @@ OpenTofu must consume existing shared infrastructure rather than recreate it.
 
 The following components have intentionally not been implemented yet:
 
-* Microsoft Foundry model deployments (Milestone 6 Phase 2);
+* Microsoft Foundry model deployments (Milestone 6 Phase 2, M6-B1 implemented but not deployed; M6-B2 Claude not started);
 * Private Endpoints;
 * Private DNS;
 * DevPod/OpenTofu Azure integration;

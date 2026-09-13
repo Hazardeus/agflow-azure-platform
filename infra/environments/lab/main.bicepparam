@@ -29,3 +29,7 @@ param dataDiskSku = 'StandardSSD_LRS'
 param dataDiskSizeGiB = 128
 param dataDiskCaching = 'None'
 
+// M6-B1: RP-provided defaults — Azure exposes no minimum/step for these models' capacity.
+param codexDeploymentCapacity = 10
+param embeddingDeploymentCapacity = 120
+

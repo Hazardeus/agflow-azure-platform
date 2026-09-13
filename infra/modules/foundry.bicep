@@ -48,12 +48,16 @@ resource foundryAccount 'Microsoft.CognitiveServices/accounts@2026-05-01' = {
   }
 }
 
-// ADR-0008: one named project per environment; no project-level identity until a concrete need exists.
+// ADR-0009: one named project per environment; SystemAssigned identity matches current Foundry
+// project-creation guidance, but grants no access — no RBAC assigned to it in M6 Phase 1.
 resource foundryProject 'Microsoft.CognitiveServices/accounts/projects@2026-05-01' = {
   parent: foundryAccount
   name: foundryProjectName
   location: location
   tags: commonTags
+  identity: {
+    type: 'SystemAssigned'
+  }
   properties: {}
 }
 

@@ -557,8 +557,8 @@ Skills should not automatically be converted into MCP resources unless there is 
 ## 12. Microsoft Foundry
 
 Microsoft Foundry centralizes model access. Foundation implemented in
-Milestone 6 Phase 1, per [ADR-0008](adr/0008-microsoft-foundry-foundation-model-access.md);
-not yet deployed.
+Milestone 6 Phase 1, per [ADR-0008](adr/0008-microsoft-foundry-foundation-model-access.md)
+and [ADR-0009](adr/0009-foundry-project-managed-identity.md); not yet deployed.
 
 ```text
 rg-agflow-platform-{environment}
@@ -577,8 +577,10 @@ Account configuration:
 * `publicNetworkAccess: Enabled` — temporary M6 posture; Private Endpoint/DNS
   migration is Milestone 7 scope.
 
-One project per environment; no project-level identity until a concrete need
-exists.
+One project per environment. Per ADR-0009, the project also has its own
+`identity: SystemAssigned` (matching current Foundry project-creation
+guidance), but **no RBAC is assigned to it** in M6 Phase 1 — permissions
+are added only when a concrete project capability requires them.
 
 Target model categories (Phase 2, not yet implemented):
 

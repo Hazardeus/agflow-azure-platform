@@ -298,7 +298,8 @@ owner of `nsg-agflow-control-lab`).
 
 Status: **In progress**
 
-Design accepted per [ADR-0008](adr/0008-microsoft-foundry-foundation-model-access.md).
+Design accepted per [ADR-0008](adr/0008-microsoft-foundry-foundation-model-access.md)
+and [ADR-0009](adr/0009-foundry-project-managed-identity.md).
 
 **Phase 1 — Foundry foundation: implemented, not yet deployed.**
 
@@ -307,8 +308,9 @@ Design accepted per [ADR-0008](adr/0008-microsoft-foundry-foundation-model-acces
   Foundry for `allowProjectManagement`; independent of the control-plane
   UAMI, no RBAC granted to it), `disableLocalAuth: true`,
   `publicNetworkAccess: Enabled` (temporary M6 posture, see ADR-0008);
-* `proj-agflow-lab` — one named `accounts/projects` child, no project-level
-  identity;
+* `proj-agflow-lab` — one named `accounts/projects` child, `identity:
+  SystemAssigned` (ADR-0009, matches current Foundry project-creation
+  guidance; no RBAC granted to it);
 * RBAC: **Foundry User** (`53ca6127-db72-4b80-b1b0-d745d6d5456d`) granted to
   the existing `id-agflow-control-plane-lab`, scoped to the Foundry account
   only — no Contributor, no RG-level access, no new identity;

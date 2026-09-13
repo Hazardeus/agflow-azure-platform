@@ -38,6 +38,22 @@ resource controlNsg 'Microsoft.Network/networkSecurityGroups@2025-09-01' = {
   tags: commonTags
 }
 
+// ADR-0006: explicit egress-only enforcement for the LAB control-plane Public IP; must not rely on the default DenyAllInbound rule.
+resource controlNsgDenyInternetInbound 'Microsoft.Network/networkSecurityGroups/securityRules@2025-09-01' = {
+  parent: controlNsg
+  name: 'Deny-Internet-Inbound'
+  properties: {
+    priority: 100
+    direction: 'Inbound'
+    access: 'Deny'
+    protocol: '*'
+    sourceAddressPrefix: 'Internet'
+    sourcePortRange: '*'
+    destinationAddressPrefix: '*'
+    destinationPortRange: '*'
+  }
+}
+
 resource workspacesNsg 'Microsoft.Network/networkSecurityGroups@2025-09-01' = {
   name: workspacesNsgName
   location: location

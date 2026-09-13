@@ -280,6 +280,9 @@ Milestone 2 does not provision outbound Internet connectivity.
 The platform must not rely on implicit Azure outbound access.
 The outbound mechanism will be selected when the first workload requiring
 public Internet access is introduced, with lab cost efficiency considered explicitly.
+For the control-plane VM, this was resolved in
+[ADR-0006](adr/0006-control-plane-compute-persistence-lab-egress.md) — see
+§7 below.
 
 See [ADR-0003](adr/0003-shared-network-foundation.md).
 
@@ -309,24 +312,68 @@ Keeping this subnet separate avoids later restructuring when private connectivit
 
 ## 7. Control-plane compute
 
-The initial control plane is intentionally simple.
-
-Target starting configuration:
+Implemented for LAB per [ADR-0006](adr/0006-control-plane-compute-persistence-lab-egress.md)
+and [ADR-0007](adr/0007-lab-control-plane-vm-sizing-adjustment.md):
 
 ```text
-Ubuntu 24.04
-Standard_D4as_v5
-4 vCPU
-16 GiB RAM
-Spot
-Eviction policy: Deallocate
+Ubuntu 24.04 LTS Gen2
+Standard_D2as_v5
+2 vCPU
+8 GiB RAM
+Spot (LAB only), eviction policy: Deallocate
+Trusted Launch, Secure Boot, vTPM
 ```
 
-The exact VM SKU remains parameterized.
+`Standard_D2as_v5` is the current LAB size, fitted to the subscription's
+Sweden Central `LowPriorityCores` Spot quota; it is not a production sizing
+recommendation. VM size, priority, eviction policy, and Spot max price are
+environment parameters, not hardcoded platform assumptions. Spot is a LAB
+cost optimization; "stable control plane" refers to durable identity,
+networking, and disk state, not guaranteed compute uptime.
 
 The initial strategy avoids AKS until operational requirements justify Kubernetes.
 
 The control-plane VM hosts Docker Compose applications.
+
+### Networking and LAB egress
+
+The VM has one Bicep-owned NIC in `snet-control`. In LAB, the NIC is
+associated with a Standard Public IP used solely for explicit outbound
+connectivity (`snet-control` has `defaultOutboundAccess = false`). The
+existing `nsg-agflow-control-{environment}` (owned by the networking module)
+carries an explicit `Deny-Internet-Inbound` rule so inbound safety does not
+depend on Azure's default NSG behavior. No public SSH or application ingress
+rule exists. A NAT Gateway remains a valid alternative for other
+environments but was not adopted for LAB.
+
+### Administration
+
+LAB administration and recovery use Azure Run Command and Serial Console,
+which do not require an inbound network path. Azure Bastion is deferred.
+
+### Identity
+
+Both `id-agflow-control-plane-{environment}` and
+`id-agflow-workspace-provisioner-{environment}` are attached to the VM.
+Workloads must explicitly select the identity they use; no new RBAC is
+introduced by the control-plane VM itself.
+
+### Persistence
+
+A separate, Bicep-owned managed data disk (`disk-agflow-control-data-{environment}`)
+is attached at a fixed LUN with `deleteOption: Detach`, independent of the
+VM's compute lifecycle, mounted at `/srv/agflow`. The OS disk belongs to the
+VM's own lifecycle and is not used for durable application state.
+
+### Host bootstrap
+
+A minimal cloud-init bootstrap (`infra/bootstrap/control-plane-cloud-init.yaml`)
+idempotently formats/mounts the persistent data disk and installs Docker
+Engine and the Compose v2 plugin from Ubuntu's distribution-signed packages.
+This is host/runtime preparation only — no application containers, compose
+files, or secrets are deployed by Bicep.
+
+Implemented in `infra/modules/control-plane-compute.bicep`.
 
 ---
 

@@ -1,0 +1,130 @@
+#cloud-config
+# ADR-0006: infrastructure-readiness bootstrap only — no application containers, no secrets.
+
+write_files:
+  - path: /opt/agflow/bootstrap-data-disk.sh
+    permissions: '0750'
+    owner: root:root
+    content: |
+      #!/usr/bin/env bash
+      set -euo pipefail
+
+      DEVICE="/dev/disk/azure/scsi1/lun0"
+      MOUNT_POINT="/srv/agflow"
+      EXPECTED_FSTYPE="ext4"
+
+      log() { echo "agflow-bootstrap: $*"; }
+      fail() { echo "agflow-bootstrap: ERROR: $*" >&2; exit 1; }
+
+      # Wait for the Azure data disk (fixed LUN 0) to be enumerated by the OS.
+      for _ in $(seq 1 30); do
+        [ -e "${DEVICE}" ] && break
+        sleep 2
+      done
+      [ -e "${DEVICE}" ] || fail "data disk ${DEVICE} did not appear, aborting disk setup"
+
+      log "device inspection: $(lsblk -no NAME,TYPE,FSTYPE,MOUNTPOINT "${DEVICE}" 2>/dev/null | tr '\n' ';')"
+
+      # Two independent, read-only, low-level probes that bypass any cache and never mutate the disk.
+      DETECTED_TYPE="$(blkid -p -o value -s TYPE "${DEVICE}" 2>/dev/null || true)"
+      # --noheadings + explicit --output TYPE avoids parsing wipefs's default tabular header/columns.
+      SIGNATURE_COUNT="$(
+        wipefs -n --noheadings --output TYPE "${DEVICE}" 2>/dev/null |
+          awk 'NF { count++ } END { print count+0 }'
+      )"
+
+      if [ "${DETECTED_TYPE}" = "${EXPECTED_FSTYPE}" ] && [ "${SIGNATURE_COUNT}" -eq 1 ]; then
+        # Confirmed, unambiguous existing ext4 filesystem — reuse it, never format.
+        log "existing ${EXPECTED_FSTYPE} filesystem confirmed on ${DEVICE}; will not format"
+      elif [ -n "${DETECTED_TYPE}" ] || [ "${SIGNATURE_COUNT}" -gt 0 ]; then
+        # Any other filesystem, partition table, RAID/LVM metadata, or an inconsistency between the
+        # two probes (e.g. ext4 reported but signature count != 1) fails closed. No format runs here.
+        fail "device ${DEVICE} has an unrecognized or ambiguous signature (blkid type='${DETECTED_TYPE:-none}', wipefs signature count=${SIGNATURE_COUNT}); refusing to format"
+      else
+        # No recognizable signature — on its own this does NOT prove the device is blank, only that
+        # no known metadata was found. Positively verify the entire device is zero-filled before
+        # treating it as a newly-created Azure managed disk. This is a full read, not a sample.
+        log "no filesystem signature detected on ${DEVICE}; verifying the full device is zero-filled before formatting"
+
+        DEVICE_SIZE="$(blockdev --getsize64 "${DEVICE}" 2>/dev/null || true)"
+        [ -n "${DEVICE_SIZE}" ] && [ "${DEVICE_SIZE}" -gt 0 ] || fail "could not determine size of ${DEVICE}; refusing to format"
+
+        if cmp --silent --bytes="${DEVICE_SIZE}" "${DEVICE}" /dev/zero; then
+          log "full-device zero check passed (${DEVICE_SIZE} bytes); formatting ${DEVICE} as ${EXPECTED_FSTYPE}"
+          mkfs.ext4 -L agflow-data "${DEVICE}"
+        else
+          fail "device ${DEVICE} has no recognizable filesystem signature but is not entirely zero-filled; refusing to format an ambiguous disk"
+        fi
+      fi
+
+      DISK_UUID="$(blkid -p -o value -s UUID "${DEVICE}")"
+      [ -n "${DISK_UUID}" ] || fail "could not determine UUID for ${DEVICE} after confirming/creating ${EXPECTED_FSTYPE}"
+
+      mkdir -p "${MOUNT_POINT}"
+
+      # Rebuild fstab so exactly one canonical entry for this mount point exists after every run:
+      # drop every existing /srv/agflow line and every stale duplicate for this UUID, then append one line.
+      if [ -f /etc/fstab ]; then
+        awk -v mp="${MOUNT_POINT}" -v uuid="UUID=${DISK_UUID}" \
+          '($2 == mp) { next } ($1 == uuid) { next } { print }' /etc/fstab > /etc/fstab.agflow.tmp
+        mv /etc/fstab.agflow.tmp /etc/fstab
+      fi
+
+      printf 'UUID=%s %s %s defaults,nofail 0 2\n' "${DISK_UUID}" "${MOUNT_POINT}" "${EXPECTED_FSTYPE}" >> /etc/fstab
+
+      mount -a
+
+  - path: /opt/agflow/bootstrap-docker.sh
+    permissions: '0750'
+    owner: root:root
+    content: |
+      #!/usr/bin/env bash
+      set -euo pipefail
+
+      export DEBIAN_FRONTEND=noninteractive
+
+      APT_MAX_ATTEMPTS=30
+      APT_RETRY_DELAY=10
+
+      log() { echo "agflow-bootstrap: $*"; }
+      fail() { echo "agflow-bootstrap: ERROR: $*" >&2; exit 1; }
+
+      # Retries a command up to APT_MAX_ATTEMPTS times, waiting APT_RETRY_DELAY seconds between
+      # attempts. Never deletes apt/dpkg lock files and never kills package-management processes —
+      # transient first-boot lock contention (e.g. Ubuntu's own unattended package activity) is
+      # waited out, not forced.
+      retry_apt() {
+        local description="$1"
+        shift
+        local attempt=1
+        while true; do
+          log "attempt ${attempt}/${APT_MAX_ATTEMPTS}: ${description}"
+          if "$@"; then
+            return 0
+          fi
+          if [ "${attempt}" -ge "${APT_MAX_ATTEMPTS}" ]; then
+            fail "${description} did not succeed after ${APT_MAX_ATTEMPTS} attempts"
+          fi
+          attempt=$((attempt + 1))
+          sleep "${APT_RETRY_DELAY}"
+        done
+      }
+
+      # Ubuntu 24.04 distribution-signed packages — no upstream Docker apt repository, no curl-pipe-shell.
+      retry_apt "apt-get update" apt-get update
+
+      retry_apt "apt-get install docker.io docker-compose-v2 uidmap" \
+        apt-get install -y -o DPkg::Lock::Timeout=300 docker.io docker-compose-v2 uidmap
+
+      systemctl enable --now docker
+
+      # A failed verification fails the bootstrap rather than silently leaving a half-installed runtime.
+      docker --version || fail "docker --version check failed"
+      docker compose version || fail "docker compose version check failed"
+      systemctl is-active --quiet docker || fail "docker service is not active"
+
+      log "Docker Engine and Compose v2 verified"
+
+runcmd:
+  - [ bash, /opt/agflow/bootstrap-data-disk.sh ]
+  - [ bash, /opt/agflow/bootstrap-docker.sh ]

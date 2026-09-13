@@ -23,11 +23,11 @@ For the development workflow, see [`DEVELOPMENT.md`](DEVELOPMENT.md).
 
 **Milestone 5 — Control-plane VM**
 
-Status: **Not started**
+Status: **Completed**
 
 Milestones 1 (Resource Groups), 2 (shared network foundation), 3
-(Managed Identities and RBAC), and 4 (Shared Storage) are all implemented,
-deployed to LAB, and post-deployment verified.
+(Managed Identities and RBAC), 4 (Shared Storage), and 5 (Control-plane VM)
+are all implemented, deployed to LAB, and post-deployment verified.
 
 ---
 
@@ -248,8 +248,49 @@ and `blobServices/default` reported no change.
 
 ## Current milestone
 
-**Milestone 5 — Control-plane VM** has not started. See
-[Planned milestones](#planned-milestones) below for details.
+### Milestone 5 — Control-plane VM
+
+Status: **Completed**
+
+Deployed to LAB per [ADR-0006](adr/0006-control-plane-compute-persistence-lab-egress.md)
+and [ADR-0007](adr/0007-lab-control-plane-vm-sizing-adjustment.md):
+
+* `vm-agflow-control-lab` — Ubuntu 24.04 LTS Gen2, `Standard_D2as_v5` Spot
+  (LAB-specific sizing, see ADR-0007), `Deallocate` eviction, Trusted Launch
+  with Secure Boot and vTPM, password authentication disabled, Azure-managed
+  boot diagnostics;
+* `pip-agflow-control-lab` — Standard static IPv4 for explicit LAB egress
+  only, paired with an explicit `Deny-Internet-Inbound` rule (priority 100)
+  on `nsg-agflow-control-lab`;
+* `nic-agflow-control-lab` — single IP configuration in `snet-control`;
+* `disk-agflow-control-data-lab` — independent 128 GiB `StandardSSD_LRS`
+  managed disk, `Attach`/LUN 0/`Detach`, mounted at `/srv/agflow`;
+* both existing UAMIs (`id-agflow-control-plane-lab`,
+  `id-agflow-workspace-provisioner-lab`) attached; no new RBAC introduced;
+* host bootstrap (`infra/bootstrap/control-plane-cloud-init.yaml`) installs
+  Docker Engine and Compose v2 from Ubuntu's distribution-signed packages;
+  no application stack deployed.
+
+Post-deployment verification confirmed against live Azure and guest state:
+
+* all Azure resources match the reviewed `what-if` (identities, NSG rule,
+  Public IP, NIC, data disk, VM configuration);
+* the persistent data disk and its filesystem UUID survived a full VM
+  deletion and Bicep-driven recreation, confirmed via a before/after
+  checksum-verified marker file;
+* Docker Engine and Docker Compose v2 verified installed and active, with
+  zero application containers;
+* RBAC unchanged (control-plane identity has no role assignments;
+  workspace-provisioner's existing RBAC scope is untouched; no Storage
+  Account RBAC introduced);
+* a final idempotence `what-if` reported 0 Create / 0 Delete / 0 replacement,
+  with only known benign Azure-computed default properties remaining as
+  Modify (UAMI `isolationScope`, managed-disk/NIC/PIP default sub-properties,
+  OS disk reported as Ignore).
+
+New module: `infra/modules/control-plane-compute.bicep`. Modified:
+`infra/modules/networking.bicep` (NSG rule only; the module remains the sole
+owner of `nsg-agflow-control-lab`).
 
 ---
 
@@ -302,14 +343,17 @@ Introduce durable Azure storage required by the platform, backups, or shared pla
 
 Deploy the initial control-plane compute in Sweden Central.
 
-Initial target:
+Current LAB target:
 
 ```text
 Ubuntu 24.04
-Standard_D4as_v5
+Standard_D2as_v5
 Spot
 Eviction policy: Deallocate
 ```
+
+`Standard_D4as_v5` was the original target; ADR-0007 changed the initial LAB
+size because of the Sweden Central Spot vCPU quota.
 
 The VM will host the Docker Compose control-plane stack.
 
@@ -354,7 +398,6 @@ OpenTofu must consume existing shared infrastructure rather than recreate it.
 
 The following components have intentionally not been implemented yet:
 
-* control-plane VM;
 * Microsoft Foundry resources;
 * Private Endpoints;
 * Private DNS;
@@ -376,7 +419,7 @@ The platform is being built incrementally.
 
 ## Application deployment target
 
-Once the Azure control plane exists, Docker Compose will eventually own the application runtime:
+Now that the Azure control-plane VM exists, Docker Compose will eventually own the application runtime:
 
 ```text
 Control-plane VM
@@ -432,6 +475,8 @@ Current accepted decisions:
 * [ADR-0003 — Shared network foundation and outbound connectivity](adr/0003-shared-network-foundation.md)
 * [ADR-0004 — Managed Identities and workspace provisioning RBAC](adr/0004-managed-identities-rbac.md)
 * [ADR-0005 — Shared Storage Foundation](adr/0005-shared-storage-foundation.md)
+* [ADR-0006 — Control-plane Compute, Persistence and LAB Egress](adr/0006-control-plane-compute-persistence-lab-egress.md)
+* [ADR-0007 — LAB Control-plane VM Sizing Adjustment](adr/0007-lab-control-plane-vm-sizing-adjustment.md)
 
 Future major architectural decisions should be captured as ADRs when they affect areas such as:
 
@@ -474,13 +519,11 @@ A successful compile is not sufficient authorization to deploy.
 
 ## Current next action
 
-Begin Milestone 5 — Control-plane VM: design the initial control-plane
-compute in Sweden Central, per the
-[Planned milestones](#planned-milestones) scope above.
+Milestone 5 is complete: the LAB control-plane VM is deployed and verified
+per ADR-0006 and ADR-0007.
 
-Milestone 4 is complete. It delivered the foundational shared Storage
-Account described under Milestone 4 above, deployed to LAB and verified
-with a second idempotence `what-if`.
-
-No control-plane VM, Microsoft Foundry, Private Endpoint, or application
-deployment work was in scope for Milestone 4.
+Begin Milestone 6 — Microsoft Foundry: provision the Azure foundation
+required for model access, per the
+[Planned milestones](#planned-milestones) scope above. Milestone 6 must
+start with design, model/region availability, and quota validation before
+any implementation.

@@ -28,9 +28,9 @@ Status: **In progress**
 Milestones 1 (Resource Groups), 2 (shared network foundation), 3
 (Managed Identities and RBAC), 4 (Shared Storage), and 5 (Control-plane VM)
 are all implemented, deployed to LAB, and post-deployment verified.
-Milestone 6 Phase 1 (Foundry account/project foundation) is deployed to
-LAB and post-deployment verified; Phase 2 (model deployments) has not
-started.
+Milestone 6 Phase 1 (Foundry account/project foundation) and Phase 2
+M6-B1 (Codex + embeddings model deployments) are deployed to LAB and
+post-deployment verified; M6-B2 (Claude) has not started.
 
 ---
 
@@ -344,18 +344,22 @@ Post-deployment verification confirmed against live Azure state:
 
 **Phase 2 — model deployments, split into sub-phases:**
 
-* **M6-B1 (Codex + embeddings): Bicep implemented, not yet deployed.**
+* **M6-B1 (Codex + embeddings): deployed to LAB, post-deployment verified.**
   `mdl-codex-lab` (`gpt-5.3-codex`, version `2026-02-24`, `GlobalStandard`,
   capacity `10`) and `mdl-embedding-lab` (`text-embedding-3-large`, version
   `1`, `GlobalStandard`, capacity `120`) — both `NoAutoUpgrade`, capacities
   are RP-provided defaults (Azure exposes no minimum/step for either
-  model). No RBAC, networking, or identity changes beyond the two child
-  `accounts/deployments` resources.
+  model). Both confirmed `provisioningState: Succeeded` /
+  `deploymentState: Running` against live Azure state; the Foundry
+  account's RBAC remains exactly the one existing **Foundry User**
+  assignment — no RBAC, networking, or identity changes beyond the two
+  child `accounts/deployments` resources. A subsequent idempotence
+  `what-if` reported 0 Create / 0 Delete / 0 Replace, with only known
+  benign Azure-computed properties remaining as Modify. Inference smoke
+  tests not yet run.
 * **M6-B2 (Claude): not started.** Requires a human-performed
   Marketplace/Anthropic commercial-terms acceptance before the Claude
   deployment specifically; not automated.
-* Entra/Managed-Identity inference smoke tests remain for after deployment
-  of each sub-phase.
 
 ---
 
@@ -463,7 +467,7 @@ OpenTofu must consume existing shared infrastructure rather than recreate it.
 
 The following components have intentionally not been implemented yet:
 
-* Microsoft Foundry model deployments (Milestone 6 Phase 2, M6-B1 implemented but not deployed; M6-B2 Claude not started);
+* Microsoft Foundry model deployments (Milestone 6 Phase 2, M6-B1 Codex/embeddings deployed; M6-B2 Claude not started);
 * Private Endpoints;
 * Private DNS;
 * DevPod/OpenTofu Azure integration;
